@@ -43,6 +43,29 @@ $app->match('/doctrine', function () use ($app) {
     );
 })->bind('doctrine');
 
+$app->match('/newProject', function() use ($app){
+    $builder = $app['form.factory']->createBuilder('form');
+    $form = $builder
+        ->add('nombre', 'text')
+        
+        ->add('pais', 'country')
+        ->add('idioma', 'language')
+        ->add('buscador', 'choice', array(
+            'choices' => array(1 => 'google.es', 2 => 'google.fr'),
+            'expanded' => true,
+        ))
+        ->add('fecha_inicio', 'datetime')
+        ->add('fecha_fin', 'datetime')
+        ->add('submit', 'submit')
+        ->getForm()
+    ;
+    return $app['twig']->render('newproject.html.twig', array('form' => $form->createView()));
+        
+
+
+
+})->bind('newProject');
+
 $app->match('/form', function (Request $request) use ($app) {
 
     $builder = $app['form.factory']->createBuilder('form');
