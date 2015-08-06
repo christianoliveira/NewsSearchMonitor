@@ -9,7 +9,7 @@ $app['app.params'] = array(
 	    'password' => 'root',
 	),
 	'security' => array(
-		'username' => 'username'
+		'username' => 'username',
 		'role' => 'ROLE_USER',
 		'password' => 'password',
 	),

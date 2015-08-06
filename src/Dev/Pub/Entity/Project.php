@@ -1,59 +1,66 @@
 <?php
 namespace Dev\Pub\Entity;
-use Doctrine\ORM\Mapping AS ORM;
+
+use Doctrine\Common\Collections\ArrayCollection;
 
 /**
- * @Entity
+ * Project
+ *
+ * @Table(name="Project")
+ * @Entity()
  */
 class Project
 {
     /**
      * @Id
-     * @Column(type="integer")
+     * @Column(name="id", type="integer")
      * @GeneratedValue(strategy="AUTO")
      */
     private $id;
 
     /**
-     * @Column(type="string", length=255, nullable=true)
+     * @Column(name="name", type="string", length=255, nullable=true)
      */
     private $name;
 
     /**
-     * @Column(type="string", length=255, nullable=true)
+     * @Column(name="search_engine", type="string", length=255, nullable=true)
      */
     private $search_engine;
 
     /**
-     * @Column(type="string", length=255, nullable=true)
+     * @Column(name="country", type="string", length=255, nullable=true)
      */
     private $country;
 
     /**
-     * @Column(type="string", length=255, nullable=true)
+     * @Column(name="language", type="string", length=255, nullable=true)
      */
     private $language;
 
     /**
-     * @Column(type="date", nullable=true)
+     * @Column(name="start_date", type="date", nullable=true)
      */
     private $start_date;
 
     /**
-     * @Column(type="date", nullable=true)
+     * @Column(name="end_date", type="date", nullable=true)
      */
     private $end_date;
 
     /**
-     * @ManyToMany(targetEntity="Dev\Pub\Entity\Keyword", mappedBy="project")
+     * @ManyToMany(targetEntity="Dev\Pub\Entity\Keyword", inversedBy="projects", cascade={"persist", "remove"})
+     * @JoinTable(name="Project_keyword")
+     * 
      */
-    private $keyword;
+    private $keywords;
+
     /**
      * Constructor
      */
     public function __construct()
     {
-        $this->keyword = new \Doctrine\Common\Collections\ArrayCollection();
+        $this->keywords = new \Doctrine\Common\Collections\ArrayCollection();
     }
 
     /**
@@ -219,7 +226,8 @@ class Project
      */
     public function addKeyword(\Dev\Pub\Entity\Keyword $keyword)
     {
-        $this->keyword[] = $keyword;
+        $keyword->addProject($this);
+        $this->keywords[] = $keyword;
 
         return $this;
     }
@@ -231,16 +239,16 @@ class Project
      */
     public function removeKeyword(\Dev\Pub\Entity\Keyword $keyword)
     {
-        $this->keyword->removeElement($keyword);
+        $this->keywords->removeElement($keyword);
     }
 
     /**
-     * Get keyword
+     * Get keywords
      *
      * @return \Doctrine\Common\Collections\Collection
      */
-    public function getKeyword()
+    public function getKeywords()
     {
-        return $this->keyword;
+        return $this->keywords;
     }
 }

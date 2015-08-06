@@ -1,0 +1,7 @@
+{% extends 'layout.html.twig' %}
+{% set active = 'add_keywords' %}
+
+{% block content %}
+    <h1>{{ 'Añadir Keywords'|trans }}</h1>
+    {{ form(form, {action: path('addKeywords')}) }}
+{% endblock %}

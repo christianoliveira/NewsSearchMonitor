@@ -1,6 +1,6 @@
 <?php
 namespace Dev\Pub\Entity;
-use Doctrine\ORM\Mapping AS ORM;
+
 
 /**
  * @Entity
@@ -35,12 +35,17 @@ class SerpResult
     private $url;
 
     /**
-     * @Column(type="string", length=255, nullable=true)
+     * @Column(type="integer", nullable=true)
      */
     private $rank;
 
     /**
-     * @Column(type="datetime", nullable=true)
+     * @Column(type="integer", nullable=true)
+     */
+    private $subrank;
+
+    /**
+     * @Column(type="string", length=255, nullable=true)
      */
     private $updated_time;
 
@@ -50,8 +55,7 @@ class SerpResult
     private $site;
 
     /**
-     * @ManyToOne(targetEntity="Dev\Pub\Entity\Serp", inversedBy="serpResult")
-     * @JoinColumn(name="serp_id", referencedColumnName="id", nullable=false)
+     * @ManyToOne(targetEntity="Dev\Pub\Entity\Serp", inversedBy="serpResults")
      */
     private $serp;
 
@@ -255,5 +259,29 @@ class SerpResult
     public function getSerp()
     {
         return $this->serp;
+    }
+
+    /**
+     * Set subrank
+     *
+     * @param \int $subrank
+     *
+     * @return SerpResult
+     */
+    public function setSubrank($subrank)
+    {
+        $this->subrank = $subrank;
+
+        return $this;
+    }
+
+    /**
+     * Get subrank
+     *
+     * @return \int
+     */
+    public function getSubrank()
+    {
+        return $this->subrank;
     }
 }

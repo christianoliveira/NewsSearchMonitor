@@ -4,7 +4,10 @@ use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Validator\Constraints as Assert;
+use Goutte\Client;
 
+
+//HOMEPAGE
 $app->match('/', function () use ($app) {
     $app['session']->getFlashBag()->add('warning', 'Warning flash message');
     $app['session']->getFlashBag()->add('info', 'Info flash message');
@@ -14,6 +17,8 @@ $app->match('/', function () use ($app) {
     return $app['twig']->render('index.html.twig');
 })->bind('homepage');
 
+
+//LOGIN
 $app->match('/login', function (Request $request) use ($app) {
     $form = $app['form.factory']->createBuilder('form')
         ->add(
@@ -34,133 +39,204 @@ $app->match('/login', function (Request $request) use ($app) {
     ));
 })->bind('login');
 
-$app->match('/doctrine', function () use ($app) {
-    return $app['twig']->render(
-        'doctrine.html.twig',
-        array(
-            'posts' => $app['db']->fetchAll('SELECT * FROM post')
-        )
-    );
-})->bind('doctrine');
 
-$app->match('/newProject', function() use ($app){
-    $builder = $app['form.factory']->createBuilder('form');
-    $form = $builder
-        ->add('nombre', 'text')
-        
-        ->add('pais', 'country')
-        ->add('idioma', 'language')
-        ->add('buscador', 'choice', array(
-            'choices' => array(1 => 'google.es', 2 => 'google.fr'),
-            'expanded' => true,
-        ))
-        ->add('fecha_inicio', 'datetime')
-        ->add('fecha_fin', 'datetime')
-        ->add('submit', 'submit')
-        ->getForm()
-    ;
+
+
+
+
+//NUEVO PROYECTO
+$app->match('/newProject', function(Request $request) use ($app){
+    $em = $app['orm.em'];
+    $entity = new \Dev\Pub\Entity\Project();
+
+    $form = $app['form.factory']->create(new \Dev\Pub\Project\ProjectType(), $entity); 
+    $form->handleRequest($request);
+    if ($form->isValid()) {
+        $em->persist($entity);
+        $em->flush();
+    } 
+
+
     return $app['twig']->render('newproject.html.twig', array('form' => $form->createView()));
-        
-
-
-
 })->bind('newProject');
 
-$app->match('/form', function (Request $request) use ($app) {
+//AÑADIR KEYWORDS
+$app->match('/addKeywords', function(Request $request) use ($app){
+    $em = $app['orm.em'];
+    $entity = new \Dev\Pub\Entity\Keyword();
 
-    $builder = $app['form.factory']->createBuilder('form');
-    $choices = array('choice a', 'choice b', 'choice c');
-
-    $form = $builder
-        ->add(
-            $builder->create('sub-form', 'form')
-                ->add('subformemail1', 'email', array(
-                    'constraints' => array(new Assert\NotBlank(), new Assert\Email()),
-                    'attr'        => array('placeholder' => 'email constraints'),
-                    'label'       => 'A custom label : ',
-                ))
-                ->add('subformtext1', 'text')
-        )
-        ->add('text1', 'text', array(
-            'constraints' => new Assert\NotBlank(),
-            'attr'        => array('placeholder' => 'not blank constraints')
-        ))
-        ->add('text2', 'text', array('attr' => array('class' => 'span1', 'placeholder' => '.span1')))
-        ->add('text3', 'text', array('attr' => array('class' => 'span2', 'placeholder' => '.span2')))
-        ->add('text4', 'text', array('attr' => array('class' => 'span3', 'placeholder' => '.span3')))
-        ->add('text5', 'text', array('attr' => array('class' => 'span4', 'placeholder' => '.span4')))
-        ->add('text6', 'text', array('attr' => array('class' => 'span5', 'placeholder' => '.span5')))
-        ->add('text8', 'text', array('disabled' => true, 'attr' => array('placeholder' => 'disabled field')))
-        ->add('textarea', 'textarea')
-        ->add('email', 'email')
-        ->add('integer', 'integer')
-        ->add('money', 'money')
-        ->add('number', 'number')
-        ->add('password', 'password')
-        ->add('percent', 'percent')
-        ->add('search', 'search')
-        ->add('url', 'url')
-        ->add('choice1', 'choice', array(
-            'choices'  => $choices,
-            'multiple' => true,
-            'expanded' => true
-        ))
-        ->add('choice2', 'choice', array(
-            'choices'  => $choices,
-            'multiple' => false,
-            'expanded' => true
-        ))
-        ->add('choice3', 'choice', array(
-            'choices'  => $choices,
-            'multiple' => true,
-            'expanded' => false
-        ))
-        ->add('choice4', 'choice', array(
-            'choices'  => $choices,
-            'multiple' => false,
-            'expanded' => false
-        ))
-        ->add('country', 'country')
-        ->add('language', 'language')
-        ->add('locale', 'locale')
-        ->add('timezone', 'timezone')
-        ->add('date', 'date')
-        ->add('datetime', 'datetime')
-        ->add('time', 'time')
-        ->add('birthday', 'birthday')
-        ->add('checkbox', 'checkbox')
-        ->add('file', 'file')
-        ->add('radio', 'radio')
-        ->add('password_repeated', 'repeated', array(
-            'type'            => 'password',
-            'invalid_message' => 'The password fields must match.',
-            'options'         => array('required' => true),
-            'first_options'   => array('label' => 'Password'),
-            'second_options'  => array('label' => 'Repeat Password'),
-        ))
-        ->add('submit', 'submit')
-        ->getForm()
-    ;
-
+    $form = $app['form.factory']->create(new \Dev\Pub\Keyword\KeywordType(), $entity); 
     $form->handleRequest($request);
-    if ($form->isSubmitted()) {
-        if ($form->isValid()) {
-            $app['session']->getFlashBag()->add('success', 'The form is valid');
-        } else {
-            $form->addError(new FormError('This is a global error'));
-            $app['session']->getFlashBag()->add('info', 'The form is bound, but not valid');
+    if ($form->isValid()) {
+        $em->persist($entity);
+        $em->flush();
+    } 
+
+
+    return $app['twig']->render('addkeywords.html.twig', array('form' => $form->createView()));
+})->bind('addKeywords');
+
+//CHEQUEAR SCRAPPEOS PENDIENTES
+$app->match('/checkPendingWork', function(Request $request) use ($app){
+    $em = $app['orm.em'];
+
+    $q = $em->createQuery("select p from \Dev\Pub\Entity\Project p where p.start_date < CURRENT_TIMESTAMP() and p.end_date > CURRENT_TIMESTAMP()");
+    $currentProjects = $q->getResult();
+
+    if($currentProjects)
+    {
+        //recorrer proyectos para ir haciendo las peticiones
+        //$projectsArray = $currentProjects->toArray();
+        $result ="";
+        for($i=0;$i<count($currentProjects);$i++)
+        {
+            $result = $result."<br>".$currentProjects[$i]->getName();
+            $keywords = $currentProjects[$i]->getKeywords();
+            for($j=0;$j<count($keywords);$j++){
+                $result = $result."<br>-keyword: ".$keywords[$j]->getName();
+                $currentKeyword = str_replace(' ', '+', $keywords[$j]->getName());
+                //$url = "http://www.".$currentProjects[$i]->getSearchEngine()."/search?q=".$currentKeyword."&hl=".$currentProjects[$i]->getLanguage()."&gl=".$currentProjects[$i]->getCountry()."&pws=0";
+                $url = "http://www.google.es/search?q=".$currentKeyword."&hl=".$currentProjects[$i]->getLanguage()."&gl=".$currentProjects[$i]->getCountry()."&pws=0";
+                $tempHtml = new DOMDocument;
+                @$tempHtml->loadHtmlFile($url);
+                if($tempHtml == FALSE){
+                    echo "<br>ERROR<br>";
+                }
+
+                $serp = new \Dev\Pub\Entity\SERP();
+                $serp->setKeyword($keywords[$j]);
+                
+                //$date = new DateTime();
+                //$timestamp = $date->getTimestamp();
+                $serp->setTimestamp(new \DateTime());
+                $serp->setHtml($tempHtml->saveXML());
+
+                //$xpath = new DOMXPath($serp->getHtml());
+                $xpath = new DOMXPath($tempHtml);
+
+                //esto parte el html en los serpresult unicamente, con lo cual podemos ir uno por uno comprobando el tipo 
+                //y guardando la info que corresponda
+                $nodelist = $xpath->query("//li[@class='g']");
+
+                
+                $posicionNews = 1;
+                $posicionImages = 1;
+                $posicionOrganic = 1;
+                $organicCount = 0;
+
+                //hacemos un bucle para recorrer los bloques de resultados
+                foreach ($nodelist as $serpnode) 
+                {
+                    $tempSERPresult = new \Dev\Pub\Entity\SERPResult();
+                    $tempSERPresult->setType("0");
+                    $indexNews = 0;
+                    
+
+                    //es news?
+                    $links = $xpath->query(".//a/@href", $serpnode);
+                    foreach ($links as $link) 
+                    {
+                        if (strpos($link->nodeValue, 'QqQIw') != false) 
+                        {
+                            //es news, un link
+                            $tempSERPresult = new \Dev\Pub\Entity\SERPResult();
+                            $tempSERPresult->setType("news");
+
+                            
+                            //pedimos el title
+                            $title = $xpath->query(".//a[contains(@href, 'QqQIw')]", $serpnode);
+                            $tempSERPresult->setTitle($title->item($indexNews)->nodeValue);
+
+                            //el site
+                            $newssite = $xpath->query(".//a[contains(@href, 'QqQIw')]//..//div//cite", $serpnode);
+                            $tempSERPresult->setSite($newssite->item($indexNews)->nodeValue);
+
+                            //la url limpia
+                            preg_match('~q=(https?://.*)&sa~', $link->nodeValue, $url);
+                            $tempSERPresult->setUrl($url[1]);
+                            
+
+                            //el ranking
+                            $tempSERPresult->setRank($posicionOrganic);
+                            $tempSERPresult->setSubrank($posicionNews);
+
+                            //el hace x horas/minutos
+                            $time = $xpath->query(".//a[contains(@href, 'QqQIw')]//..//div//span//span[@class='nobr']");
+                            $timeindex = 2*($indexNews);
+                            $tempSERPresult->setUpdatedTime($time->item($timeindex)->nodeValue);
+
+                            //la descripción
+                            $description = $xpath->query(".//a[contains(@href, 'QqQIw')]//..//div//span[@class='st']");
+                            if($indexNews==0){
+                                $tempSERPresult->setDescription($description->item($indexNews)->nodeValue);  
+                            }
+
+                            $posicionNews++;
+                            $indexNews++;
+
+                            $serp->addSerpResult($tempSERPresult);
+                        }else if(strpos($link->nodeValue, 'QpwJ') != false){
+                            //es news, la imagen
+                            $tempSERPresult = new \Dev\Pub\Entity\SERPResult();
+                            $tempSERPresult->setType("news-image");
+                            $newssite = $xpath->query(".//a[contains(@href, 'QpwJ')]//..//span", $serpnode);
+                            $tempSERPresult->setSite($newssite->item(0)->nodeValue);
+                            preg_match('~q=(https?://.*)&sa~', $link->nodeValue, $url);
+                            $tempSERPresult->setUrl($url[1]);
+                            $tempSERPresult->setRank($posicionOrganic);
+                            $tempSERPresult->setSubrank(0);
+                            $serp->addSerpResult($tempSERPresult);
+                        }else if(strpos($link->nodeValue, 'QFjA') != false){
+                            //es un resultado orgánico normal
+                            $tempSERPresult = new \Dev\Pub\Entity\SERPResult();
+                            $tempSERPresult->setType("normal");
+                            $title = $xpath->query(".//a[contains(@href, 'QFjA')]", $serpnode);
+                            $tempSERPresult->setTitle($title->item(0)->nodeValue);
+                            preg_match('~q=(https?://.*)&sa~', $link->nodeValue, $url);
+                            $tempSERPresult->setUrl($url[1]);
+                            if($posicionNews!=1 || $posicionImages!=1){
+                                $posicionNews=1;
+                                $posicionImages=1;
+                            }
+                            $tempSERPresult->setRank($posicionOrganic);
+                            $description = $xpath->query(".//a[contains(@href, 'QFjA')]//..//..//span[@class='st']");
+
+                            $tempSERPresult->setDescription($description->item($organicCount)->nodeValue);
+                            $organicCount++;
+                            $serp->addSerpResult($tempSERPresult);
+                        }else if(strpos($link->nodeValue, 'QwW4w') != false){
+                            $tempSERPresult = new \Dev\Pub\Entity\SERPResult();
+                            $tempSERPresult->setType("images");
+                            preg_match('~q=(https?://.*)&sa~', $link->nodeValue, $url);
+                            $tempSERPresult->setUrl($url[1]);
+                            $tempSERPresult->setRank($posicionOrganic);
+                            $tempSERPresult->setSubrank($posicionImages);
+                            $posicionImages++;
+                            $serp->addSerpResult($tempSERPresult);
+                        }
+                    }
+                    $posicionOrganic++;   
+                }
+                $em->persist($serp); 
+            }
         }
+        $em->flush();
+        return $result;
+    }else{
+        return "No hay proyectos en marcha";
     }
 
-    return $app['twig']->render('form.html.twig', array('form' => $form->createView()));
-})->bind('form');
+})->bind('checkPendingWork');
 
+//LOGOUT
 $app->match('/logout', function () use ($app) {
     $app['session']->clear();
 
     return $app->redirect($app['url_generator']->generate('homepage'));
 })->bind('logout');
 
+
+//CACHEPAGE
 $app->get('/page-with-cache', function () use ($app) {
     $response = new Response($app['twig']->render('page-with-cache.html.twig', array('date' => date('Y-M-d h:i:s'))));
     $response->setTtl(10);
@@ -168,6 +244,8 @@ $app->get('/page-with-cache', function () use ($app) {
     return $response;
 })->bind('page_with_cache');
 
+
+//ERRORES
 $app->error(function (\Exception $e, $code) use ($app) {
     if ($app['debug']) {
         return;

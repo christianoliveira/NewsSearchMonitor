@@ -1,6 +1,5 @@
 <?php
 namespace Dev\Pub\Entity;
-use Doctrine\ORM\Mapping AS ORM;
 
 /**
  * @Entity
@@ -25,13 +24,12 @@ class Serp
     private $html;
 
     /**
-     * @OneToMany(targetEntity="Dev\Pub\Entity\SerpResult", mappedBy="serp")
+     * @OneToMany(targetEntity="Dev\Pub\Entity\SerpResult", mappedBy="serp", cascade={"persist", "remove"})
      */
-    private $serpResult;
+    private $serpResults;
 
     /**
-     * @ManyToOne(targetEntity="Dev\Pub\Entity\Keyword", inversedBy="serp")
-     * @JoinColumn(name="keyword_id", referencedColumnName="id", nullable=false)
+     * @ManyToOne(targetEntity="Dev\Pub\Entity\Keyword", inversedBy="serps")
      */
     private $keyword;
     /**
@@ -101,40 +99,6 @@ class Serp
     }
 
     /**
-     * Add serpResult
-     *
-     * @param \Dev\Pub\Entity\SerpResult $serpResult
-     *
-     * @return Serp
-     */
-    public function addSerpResult(\Dev\Pub\Entity\SerpResult $serpResult)
-    {
-        $this->serpResult[] = $serpResult;
-
-        return $this;
-    }
-
-    /**
-     * Remove serpResult
-     *
-     * @param \Dev\Pub\Entity\SerpResult $serpResult
-     */
-    public function removeSerpResult(\Dev\Pub\Entity\SerpResult $serpResult)
-    {
-        $this->serpResult->removeElement($serpResult);
-    }
-
-    /**
-     * Get serpResult
-     *
-     * @return \Doctrine\Common\Collections\Collection
-     */
-    public function getSerpResult()
-    {
-        return $this->serpResult;
-    }
-
-    /**
      * Set keyword
      *
      * @param \Dev\Pub\Entity\Keyword $keyword
@@ -156,5 +120,40 @@ class Serp
     public function getKeyword()
     {
         return $this->keyword;
+    }
+
+    /**
+     * Add serpResult
+     *
+     * @param \Dev\Pub\Entity\SerpResult $serpResult
+     *
+     * @return Serp
+     */
+    public function addSerpResult(\Dev\Pub\Entity\SerpResult $serpResult)
+    {
+        $serpResult->setSerp($this);
+        $this->serpResults[] = $serpResult;
+
+        return $this;
+    }
+
+    /**
+     * Remove serpResult
+     *
+     * @param \Dev\Pub\Entity\SerpResult $serpResult
+     */
+    public function removeSerpResult(\Dev\Pub\Entity\SerpResult $serpResult)
+    {
+        $this->serpResults->removeElement($serpResult);
+    }
+
+    /**
+     * Get serpResults
+     *
+     * @return \Doctrine\Common\Collections\Collection
+     */
+    public function getSerpResults()
+    {
+        return $this->serpResults;
     }
 }

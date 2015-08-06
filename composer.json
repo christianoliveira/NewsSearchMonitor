@@ -30,7 +30,8 @@
         "twig/twig"             : "~1.10",
         "silex/web-profiler"    : "~1.0.1",
         "twitter/bootstrap"     : "2.3.2",
-        "dflydev/doctrine-orm-service-provider": "1.0.6"
+        "dflydev/doctrine-orm-service-provider": "1.0.6",
+        "fabpot/goutte"         : "2.0.4"
     },
     "require-dev": {
         "symfony/browser-kit"   : "~2.3",
@@ -43,7 +44,8 @@
     },
     "autoload": {
         "psr-0": {
-            "SKE": "src/"
+            "SKE": "src/",
+            "Dev": "src/"
         }
     }
 }
