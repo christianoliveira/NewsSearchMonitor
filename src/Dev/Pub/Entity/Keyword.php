@@ -20,7 +20,7 @@ class Keyword
     private $name;
 
     /**
-     * @OneToMany(targetEntity="Dev\Pub\Entity\Serp", mappedBy="keyword")
+     * @OneToMany(targetEntity="Dev\Pub\Entity\Serp", mappedBy="keyword", fetch="EAGER")
      */
     private $serps;
 

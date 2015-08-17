@@ -5,7 +5,12 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Validator\Constraints as Assert;
 use Goutte\Client;
-
+use Ghunti\HighchartsPHP\Highchart;
+use Ghunti\HighchartsPHP\HighchartJsExpr;
+use Silex\Provider\SerializerServiceProvider;
+use Symfony\Component\Serializer\Encoder\JsonEncoder;
+use Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer;
+use Symfony\Component\Serializer\Serializer;
 
 //HOMEPAGE
 $app->match('/', function () use ($app) {
@@ -75,6 +80,126 @@ $app->match('/addKeywords', function(Request $request) use ($app){
 
     return $app['twig']->render('addkeywords.html.twig', array('form' => $form->createView()));
 })->bind('addKeywords');
+
+//VER RESULTADOS PROYECTO
+$app->match('/projectResults/{id}', function(Request $request, $id) use ($app){
+    $em = $app['orm.em'];
+
+    $pojectsRepository = $em->getRepository('\Dev\Pub\Entity\Project');
+    $project = $pojectsRepository->findOneBy(array('id' => $id));
+
+    $keywords = $project->getKeywords();
+
+    foreach ($keywords as $keyword) {
+        //para cada keyword pintaremos una gráfica, con los top dominios y la evolución de cada uno.
+        //de momento vamos a intentar sacar la gráfica solo para el mundo para probar el formato y que todo va bien
+        $serps = $keyword->getSerps();
+        $i=0;
+        $serpNumber=0;
+
+        $visibilityArray = array();
+        $rankingArray = array();
+        
+        if($keyword->getName()=="lenny kravitz"){
+            foreach ($serps as $serp) {                
+                $serpresults = $serp->getSerpResults();
+                foreach ($serpresults as $serpresult) {
+                    if($serpresult->getType()=="news"){
+                        $currentSite = $serpresult->getSite();
+
+                        //Tenemos que saber si es la primera vez que aparece el site o no. 
+                        if(array_key_exists($currentSite, $rankingArray)){
+                            //ya tenemos datos del site! tenemos que saber si hay vacíos o no
+                            if(sizeof($rankingArray[$currentSite])<$serpNumber){
+                                //hay que rellenar
+                                for($temp=sizeof($rankingArray[$currentSite]); $temp<($serpNumber); $temp++){
+                                    //por cada hueco añadimos un null
+                                    $rankingArray[$currentSite][] = array($serpNumber => null);
+                                }
+                                //al terminar añadimos el valor actual
+                                $rankingArray[$currentSite][] = array($serpNumber => $serpresult->getSubrank());
+                            }
+                            else if(sizeof($rankingArray[$currentSite]) == $serpNumber){
+                                //es el valor que toca
+                                $rankingArray[$currentSite][] = array($serpNumber => $serpresult->getSubrank());
+                            }
+
+                            //si sizeof($rankingArray[$currentSite]) es mayor que $i, es que hay más de un resultado del mismo site, 
+                            //por lo que no añadimos posicion (mantenemos la que tuviese)
+                            //calculamos la visibilidad para cualquiera de los casos
+                            //ya existe valor de visibilidad porque siempre que hay una posicion hay un valor 
+                            //de visibilidad
+                            $visibilityArray[$currentSite] = $visibilityArray[$currentSite] + (4-$serpresult->getSubRank());
+                        }else{
+                            //es la primera vez que aparece el site así que simplemente asignamos los valores
+                            for($temp=0;$temp<$serpNumber;$temp++){
+                                $rankingArray[$currentSite][] = array($temp => null);
+                            }
+                            $rankingArray[$currentSite][] = array($serpNumber => $serpresult->getSubrank());
+                            $visibilityArray[$currentSite] = 4-$serpresult->getSubrank();
+                        }
+                    }   
+                    $i++;
+                }
+                foreach ($rankingArray as $key => $rankingDomain) {
+                    //cuantos elementos tiene el array?
+                    $temp = sizeof($rankingDomain);
+                    //si el número de elementos es menor que la cantidad de serp que llevamos, rellenamos con null
+                    if($temp<($serpNumber+1)){
+                        for($temp;$temp<($serpNumber+1);$temp++){
+                            $rankingArray[$key][] = array($serpNumber => null);
+                        }
+                    }
+                }
+                $serpNumber++;
+            }
+        }
+
+        $top1 = "";
+        $top2 = "";
+        $top3 = "";
+        $topVisibility1 = 0;
+        $topVisibility2 = 0;
+        $topVisibility3 = 0;
+        foreach ($visibilityArray as $key => $value) {
+            if($value > $topVisibility1){
+                $topVisibility1 = $value;
+                $top1 = $key;
+            }else if($value > $topVisibility2){
+                $topVisibility2 = $value;
+                $top2 = $key;
+            }else if($value > $topVisibility3){
+                $topVisibility3 = $value;
+                $top3 = $key;
+            }
+        }
+
+       if($top1 != ""){
+            for($x=0;$x<sizeof($rankingArray[$top1]);$x++){
+                $data[] = array($x, $rankingArray[$top1][$x][$x], $rankingArray[$top2][$x][$x], $rankingArray[$top3][$x][$x]);
+           }
+           
+           $encoders = array(new JsonEncoder());
+            $normalizers = array(new GetSetMethodNormalizer());
+
+            $serializer = new Serializer($normalizers, $encoders);
+            $data = $serializer->serialize($data, 'json');
+            $columns = array('Minuto', $top1, $top2, $top3);
+            return $app['twig']->render('projectresults.html.twig', array('data' => $data, 'columns'=>$columns));
+       }
+
+    }
+
+    $encoders = array(new JsonEncoder());
+    $normalizers = array(new GetSetMethodNormalizer());
+
+    $serializer = new Serializer($normalizers, $encoders);
+    $data = $serializer->serialize($data, 'json');
+
+
+
+    return $app['twig']->render('projectresults.html.twig', array('data' => $data));
+})->bind('projectResults');
 
 //CHEQUEAR SCRAPPEOS PENDIENTES
 $app->match('/checkPendingWork', function(Request $request) use ($app){

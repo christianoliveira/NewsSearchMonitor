@@ -1,11 +1,8 @@
-Silex - Kitchen Sink Edition
+NewsSearchMonitor
 ============================
 
-This project is a sample or a bootstrap silex application.
-You can use it for your next php application.
+Esto es mi proyecto fin de carrera, para ITIS (Ingeniería Técnica en Informática de Sistemas)
 
-For more informations, see the
-[**dedicated page**](http://lyrixx.github.com/Silex-Kitchen-Edition).
+Es un monitor de posiciones del módulo de Google news que Google saca en sus resultados cuando algo es noticia. La herramienta trackea las posiciones cada pocos minutos.
 
-[![SensioLabsInsight](https://insight.sensiolabs.com/projects/7fccf04a-aa27-4412-831b-99ce86fb5df7/mini.png)](https://insight.sensiolabs.com/projects/7fccf04a-aa27-4412-831b-99ce86fb5df7)
-[![Build Status](https://secure.travis-ci.org/lyrixx/Silex-Kitchen-Edition.png?branch=master)](http://travis-ci.org/lyrixx/Silex-Kitchen-Edition)
+Está todavía en desarrollo, usando Silex Kitchen Edition(http://lyrixx.github.io/Silex-Kitchen-Edition/) y Doctrine como ORM

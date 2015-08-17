@@ -1,0 +1,57 @@
+{% extends 'layout.html.twig' %}
+{% set active = 'new_project' %}
+
+{% block content %}
+    <h1>{{ 'Nuevo Proyecto'|trans }}</h1>
+
+    {{ form_start(form) }}
+	    {{ form_errors(form) }}
+
+	    {{ form_row(form.name) }}
+	    {{ form_row(form.country) }}
+	    {{ form_row(form.language) }}
+	    {{ form_row(form.search_engine) }}
+	    {{ form_row(form.start_date) }}
+	    {{ form_row(form.end_date) }}
+	    <ul id="keywords-list" data-prototype="{{ form_widget(form.keywords.vars.prototype)|e }}">
+		    {% for keywordField in form.keywords %}
+		        <li>
+		            {{ form_errors(keywordField) }}
+		            {{ form_widget(keywordField) }}
+		        </li>
+		    {% endfor %}
+	    </ul>
+	    <a href="#" id="add-another-keyword">Add another keyword</a>
+
+
+	    {{ form_row(form.submit, { 'label': 'Submit me' }) }}
+	{{ form_end(form) }}
+    
+    
+
+
+    <script type="text/javascript">
+    // keep track of how many keywords fields have been rendered
+    var keywordsCount = '{{ form.keywords|length }}';
+
+    jQuery(document).ready(function() {
+	        jQuery('#add-another-keyword').click(function(e) {
+	            e.preventDefault();
+
+	            var keywordList = jQuery('#keywords-list');
+
+	            // grab the prototype template
+	            var newWidget = keywordList.attr('data-prototype');
+	            // replace the "__name__" used in the id and name of the prototype
+	            // with a number that's unique to your keywords
+	            // end name attribute looks like name="contact[keywords][2]"
+	            newWidget = newWidget.replace(/__name__/g, keywordsCount);
+	            keywordsCount++;
+
+	            // create a new list element and add it to the list
+	            var newLi = jQuery('<li></li>').html(newWidget);
+	            newLi.appendTo(keywordList);
+	        });
+	    })
+	</script>
+{% endblock %}

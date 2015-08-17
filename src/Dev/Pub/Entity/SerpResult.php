@@ -55,7 +55,7 @@ class SerpResult
     private $site;
 
     /**
-     * @ManyToOne(targetEntity="Dev\Pub\Entity\Serp", inversedBy="serpResults")
+     * @ManyToOne(targetEntity="Dev\Pub\Entity\Serp", inversedBy="serpResults", fetch="EAGER")
      */
     private $serp;
 

@@ -24,12 +24,12 @@ class Serp
     private $html;
 
     /**
-     * @OneToMany(targetEntity="Dev\Pub\Entity\SerpResult", mappedBy="serp", cascade={"persist", "remove"})
+     * @OneToMany(targetEntity="Dev\Pub\Entity\SerpResult", mappedBy="serp", cascade={"persist", "remove"},  fetch="EAGER")
      */
     private $serpResults;
 
     /**
-     * @ManyToOne(targetEntity="Dev\Pub\Entity\Keyword", inversedBy="serps")
+     * @ManyToOne(targetEntity="Dev\Pub\Entity\Keyword", inversedBy="serps", fetch="EAGER")
      */
     private $keyword;
     /**
