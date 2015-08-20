@@ -97,12 +97,15 @@ $app->match('/projectResults/{id}', function(Request $request, $id) use ($app){
         $i=0;
         $serpNumber=0;
 
+
         $visibilityArray = array();
         $rankingArray = array();
+        $scrappedTimes = array();
         
-        if($keyword->getName()=="lenny kravitz"){
+        if($keyword->getName()=="lina morgan"){
             foreach ($serps as $serp) {                
                 $serpresults = $serp->getSerpResults();
+                $scrappedTimes[] = date_format($serp->getTimestamp(), 'Y-m-d H:i:s');
                 foreach ($serpresults as $serpresult) {
                     if($serpresult->getType()=="news"){
                         $currentSite = $serpresult->getSite();
@@ -114,14 +117,14 @@ $app->match('/projectResults/{id}', function(Request $request, $id) use ($app){
                                 //hay que rellenar
                                 for($temp=sizeof($rankingArray[$currentSite]); $temp<($serpNumber); $temp++){
                                     //por cada hueco añadimos un null
-                                    $rankingArray[$currentSite][] = array($serpNumber => null);
+                                    $rankingArray[$currentSite][] = array($scrappedTimes[$temp] => null);
                                 }
                                 //al terminar añadimos el valor actual
-                                $rankingArray[$currentSite][] = array($serpNumber => $serpresult->getSubrank());
+                                $rankingArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $serpresult->getSubrank());
                             }
                             else if(sizeof($rankingArray[$currentSite]) == $serpNumber){
                                 //es el valor que toca
-                                $rankingArray[$currentSite][] = array($serpNumber => $serpresult->getSubrank());
+                                $rankingArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $serpresult->getSubrank());
                             }
 
                             //si sizeof($rankingArray[$currentSite]) es mayor que $i, es que hay más de un resultado del mismo site, 
@@ -133,9 +136,9 @@ $app->match('/projectResults/{id}', function(Request $request, $id) use ($app){
                         }else{
                             //es la primera vez que aparece el site así que simplemente asignamos los valores
                             for($temp=0;$temp<$serpNumber;$temp++){
-                                $rankingArray[$currentSite][] = array($temp => null);
+                                $rankingArray[$currentSite][] = array($scrappedTimes[$temp] => null);
                             }
-                            $rankingArray[$currentSite][] = array($serpNumber => $serpresult->getSubrank());
+                            $rankingArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $serpresult->getSubrank());
                             $visibilityArray[$currentSite] = 4-$serpresult->getSubrank();
                         }
                     }   
@@ -145,9 +148,10 @@ $app->match('/projectResults/{id}', function(Request $request, $id) use ($app){
                     //cuantos elementos tiene el array?
                     $temp = sizeof($rankingDomain);
                     //si el número de elementos es menor que la cantidad de serp que llevamos, rellenamos con null
+                    
                     if($temp<($serpNumber+1)){
                         for($temp;$temp<($serpNumber+1);$temp++){
-                            $rankingArray[$key][] = array($serpNumber => null);
+                            $rankingArray[$key][] = array($scrappedTimes[$temp] => null);
                         }
                     }
                 }
@@ -174,10 +178,12 @@ $app->match('/projectResults/{id}', function(Request $request, $id) use ($app){
             }
         }
 
-       if($top1 != ""){
+
+       if($top1 != ""){       
             for($x=0;$x<sizeof($rankingArray[$top1]);$x++){
-                $data[] = array($x, $rankingArray[$top1][$x][$x], $rankingArray[$top2][$x][$x], $rankingArray[$top3][$x][$x]);
-           }
+                $currentTime = $scrappedTimes[$x];
+                $data[] = array($scrappedTimes[$x], $rankingArray[$top1][$x][$currentTime], $rankingArray[$top2][$x][$currentTime], $rankingArray[$top3][$x][$currentTime]);
+            }
            
            $encoders = array(new JsonEncoder());
             $normalizers = array(new GetSetMethodNormalizer());
@@ -185,7 +191,7 @@ $app->match('/projectResults/{id}', function(Request $request, $id) use ($app){
             $serializer = new Serializer($normalizers, $encoders);
             $data = $serializer->serialize($data, 'json');
             $columns = array('Minuto', $top1, $top2, $top3);
-            return $app['twig']->render('projectresults.html.twig', array('data' => $data, 'columns'=>$columns));
+            return $app['twig']->render('projectresults.html.twig', array('data' => $data, 'columns'=>$columns, 'keyword'=>$keyword->getName()));
        }
 
     }
@@ -195,6 +201,7 @@ $app->match('/projectResults/{id}', function(Request $request, $id) use ($app){
 
     $serializer = new Serializer($normalizers, $encoders);
     $data = $serializer->serialize($data, 'json');
+    $currentKeyword = $keyword->getName();
 
 
 

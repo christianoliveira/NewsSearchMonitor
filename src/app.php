@@ -63,10 +63,11 @@ $app->register(new MonologServiceProvider(), array(
 $app->register(new TwigServiceProvider(), array(
     'twig.options'        => array(
         'cache'            => isset($app['twig.options.cache']) ? $app['twig.options.cache'] : false,
-        'strict_variables' => true
+        'strict_variables' => true,
+        'debug'            => true
     ),
     'twig.form.templates' => array('form_div_layout.html.twig', 'common/form_div_layout.html.twig'),
-    'twig.path'           => array(__DIR__ . '/../resources/views')
+    'twig.path'           => array(__DIR__ . '/../resources/views'),
 ));
 
 if ($app['debug'] && isset($app['cache.path'])) {

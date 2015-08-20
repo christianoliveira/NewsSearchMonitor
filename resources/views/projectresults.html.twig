@@ -18,21 +18,37 @@
 
         var data = new google.visualization.DataTable();
 
+        var j=0;
+
         {% for item in columns %}
-          data.addColumn('number', '{{item}}');
+          if(j==0){
+            data.addColumn('datetime', 'minute');
+            j++;
+          }else{
+            data.addColumn('number', '{{item}}');
+          }
         {% endfor %}
-        
-        
-        
-        data.addRows({{ data|raw }});
-        
+
+        var dataArray = {{ data|raw }};
+
+        for(var i=0;i<dataArray.length;i++){
+          var tempDate = new Date(dataArray[i][0]);
+          data.addRow([tempDate, dataArray[i][1], dataArray[i][2],dataArray[i][3]]);
+        }
+        var keyword = "{{ keyword }}";
+        var title = "Posicionamiento en News: "+keyword;
+
+
+              
+
         
 
         // Set chart options
-        var options = {'title':'Posicionamiento en News',
+        var options = {'title': title,
                        'width':900,
                        'height':300,
-                       'vAxis': {'direction': -1}};
+                       'vAxis': {'direction': -1},
+                        'focusTarget': 'category'};
 
         // Instantiate and draw our chart, passing in some options.
         var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
