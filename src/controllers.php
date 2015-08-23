@@ -306,6 +306,106 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                             $posicionNews++;
                             $indexNews++;
 
+                            /*
+                            *   Código para scrappear de los propios resultados
+                            */
+                            $ResultHtml = new DOMDocument;
+                            @$ResultHtml->loadHtmlFile($tempSERPresult->getUrl());
+                            $tempXpath = new DOMXPath($ResultHtml);
+
+                            //title
+                            $title = $tempXpath->query("//title");
+                            if($title->length != 0){
+                                $tempSERPresult->setUrlTitle($title->item(0)->nodeValue);
+                            }
+
+                            //h1
+                            $h1 = $tempXpath->query("//h1[contains(.,' ')]");
+                            if($h1->length != 0){
+                                $tempSERPresult->setUrlH1($h1->item(0)->nodeValue);
+                            }
+
+                            //h2
+                            $h2 = $tempXpath->query("//h2");
+                            if($h2->length != 0){
+                                $tempSERPresult->setUrlH2($h2->item(0)->nodeValue);
+                            }
+
+                            //date
+                            $urlDate = $tempXpath->query("//meta[@name='date']/@content");
+                            if($urlDate->length != 0){
+                                $tempSERPresult->setUrlDate($urlDate->item(0)->nodeValue);
+                            }
+
+                            $urlDateIssued = $tempXpath->query("//meta[@name='DC.date.issued']/@content");
+                            if($urlDateIssued->length != 0){
+                                $tempSERPresult->setUrlDateIssued($urlDateIssued->item(0)->nodeValue);
+                            }
+
+                            $urlCharacterCount = $tempXpath->query("//p");
+                            $tempCount = 0;
+                            foreach ($urlCharacterCount as $p) {
+                                $tempCount += strlen($p->nodeValue);
+                            }
+                            if($tempCount != 0){
+                                $tempSERPresult->setUrlCharacterCount($tempCount);
+                            }
+
+                            $URLLinks = $tempXpath->query("//p//a/@href");
+                            
+                            $tempDomain = "";
+                            $inLinksCount = 0;
+                            $outLinksCount = 0;
+                            
+                            preg_match('"^(?:https?:\/\/)?(?:www\.)?([^\/]+)"', $tempSERPresult->getUrl(), $tempDomain);
+
+                            foreach ($URLLinks as $linkHref) {
+                                //descartamos anclas, js, enlaces internos relativos (no se suelen dar en contenido)      
+                                if(strpos($linkHref->nodeValue, "http") === 0){
+                                    //si es FALSO, es un link externo
+                                    if(strpos($linkHref->nodeValue, $tempDomain[1]) === FALSE){
+                                        $outLinksCount++;
+                                    }else{
+                                        $inLinksCount++;
+                                    }
+                                }
+                            }
+
+                            $tempSERPresult->setUrlOutLinksCount($outLinksCount);
+                            $tempSERPresult->setUrlInLinksCount($inLinksCount);
+
+                            $apiEndPoint = "https://free.sharedcount.com/";
+                            $apiKey = "4a70e6281740d91abe3fab751110db54cad34637";
+                            $apiCallUrl = $apiEndPoint."?url=".$tempSERPresult->getUrl()."&apikey=".$apiKey;
+                            $returnJson = file_get_contents($apiCallUrl);
+                            $counts = json_decode($returnJson, true);
+                            $tempSERPresult->setUrlTweetCount($counts['Twitter']);
+                            $tempSERPresult->setUrlFbLikeCount($counts['Facebook']['like_count']);
+                            $tempSERPresult->setUrlFbShareCount($counts['Facebook']['share_count']);
+                            $tempSERPresult->setUrlFbCommentCount($counts['Facebook']['commentsbox_count']);
+                            $tempSERPresult->setUrlFbTotalCount($counts['Facebook']['total_count']);
+                            $tempSERPresult->setUrlPlusOneCount($counts['GooglePlusOne']);
+
+                            $curl = curl_init();
+                            $apiKey = "AIzaSyDtMneF9wgZDs5dUE6QbxQCN6-dkiraBUs";
+                            $url = $tempSERPresult->getUrl();
+                            curl_setopt_array($curl, array(
+                                CURLOPT_RETURNTRANSFER => 1,
+                                CURLOPT_URL => 'https://www.googleapis.com/pagespeedonline/v3beta1/mobileReady?key='.$apiKey.'&url='.$url.'&strategy=mobile',
+                            ));
+                            $resp = curl_exec($curl);
+                            curl_close($curl);
+                            
+
+                            $resultPageSpeed = json_decode($resp, true);
+
+                            if($resultPageSpeed['ruleGroups']['USABILITY']['pass'] == TRUE){
+                                $tempSERPresult->setUrlMobileFriendly(1);
+                            }else{
+                                $tempSERPresult->setUrlMobileFriendly(0);
+                            }
+
+
                             $serp->addSerpResult($tempSERPresult);
                         }else if(strpos($link->nodeValue, 'QpwJ') != false){
                             //es news, la imagen
