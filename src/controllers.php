@@ -14,10 +14,10 @@ use Symfony\Component\Serializer\Serializer;
 
 //HOMEPAGE
 $app->match('/', function () use ($app) {
-    $app['session']->getFlashBag()->add('warning', 'Warning flash message');
-    $app['session']->getFlashBag()->add('info', 'Info flash message');
-    $app['session']->getFlashBag()->add('success', 'Success flash message');
-    $app['session']->getFlashBag()->add('error', 'Error flash message');
+    //$app['session']->getFlashBag()->add('warning', 'Warning flash message');
+    //$app['session']->getFlashBag()->add('info', 'Info flash message');
+    //$app['session']->getFlashBag()->add('success', 'Success flash message');
+    //$app['session']->getFlashBag()->add('error', 'Error flash message');
 
     return $app['twig']->render('index.html.twig');
 })->bind('homepage');
@@ -102,7 +102,7 @@ $app->match('/projectResults/{id}', function(Request $request, $id) use ($app){
         $rankingArray = array();
         $scrappedTimes = array();
         
-        if($keyword->getName()=="lina morgan"){
+        if($keyword->getName()=="vuelta a españa"){
             foreach ($serps as $serp) {                
                 $serpresults = $serp->getSerpResults();
                 $scrappedTimes[] = date_format($serp->getTimestamp(), 'Y-m-d H:i:s');
@@ -488,6 +488,7 @@ $app->error(function (\Exception $e, $code) use ($app) {
             $message = 'The requested page could not be found.';
             break;
         default:
+            var_dump('exception handler', get_class($e));
             $message = 'We are sorry, but something went terribly wrong.';
     }
 

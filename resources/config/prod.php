@@ -45,10 +45,11 @@ $app['db.options'] = array(
 
 // Doctrine (ORM)
 $app['orm.proxies_dir'] = $app['cache.path'].'/doctrine/proxies';
-$app['orm.default_cache'] = array(
+/*$app['orm.default_cache'] = array(
     'driver' => 'filesystem',
     'path' => $app['cache.path'].'/doctrine/cache',
-);
+);*/
+$app['orm.default_cache'] = 'array';
 $app['orm.em.options'] = array(
     'mappings' => array(
         array(
