@@ -81,14 +81,165 @@ $app->match('/addKeywords', function(Request $request) use ($app){
     return $app['twig']->render('addkeywords.html.twig', array('form' => $form->createView()));
 })->bind('addKeywords');
 
+//VER RESULTADOS PROYECTO+KEYWORD
+$app->match('/projectResults/{projectId}/{keywordId}', function(Request $request, $projectId, $keywordId) use ($app){
+    $em = $app['orm.em'];
+    $projectsRepository = $em->getRepository('\Dev\Pub\Entity\Project');
+    $project = $projectsRepository->findOneBy(array('id' => $projectId));
+    $keywords = $project->getKeywords();
+
+    $otherKeywords = array();
+    foreach ($keywords as $keyword) {
+        $url = $app['url_generator']->generate('projectResultsKeyword', array('projectId' => $projectId, 'keywordId' => $keyword->getId()));
+        $otherKeywords[] = array($keyword->getName(), $url);
+    }
+
+    $keywordsRepository = $em->getRepository('\Dev\Pub\Entity\Keyword');
+    $keyword = $keywordsRepository->findOneBy(array('id' => $keywordId));
+
+    $serps = $keyword->getSerps();
+    $i=0;
+    $serpNumber=0;
+
+
+    $visibilityArray = array();
+    $rankingArray = array();
+    $scrappedTimes = array();
+    
+    foreach ($serps as $serp) {                
+        $serpresults = $serp->getSerpResults();
+        $scrappedTimes[] = date_format($serp->getTimestamp(), 'Y-m-d H:i:s');
+        foreach ($serpresults as $serpresult) {
+            if($serpresult->getType()=="news"){
+                $currentSite = $serpresult->getSite();
+
+                //Tenemos que saber si es la primera vez que aparece el site o no. 
+                if(array_key_exists($currentSite, $rankingArray)){
+                    //ya tenemos datos del site! tenemos que saber si hay vacíos o no
+                    if(sizeof($rankingArray[$currentSite])<$serpNumber){
+                        //hay que rellenar
+                        for($temp=sizeof($rankingArray[$currentSite]); $temp<($serpNumber); $temp++){
+                            //por cada hueco añadimos un null
+                            $rankingArray[$currentSite][] = array($scrappedTimes[$temp] => null);
+                        }
+                        //al terminar añadimos el valor actual
+                        $rankingArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $serpresult->getSubrank());
+                    }
+                    else if(sizeof($rankingArray[$currentSite]) == $serpNumber){
+                        //es el valor que toca
+                        $rankingArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $serpresult->getSubrank());
+                    }
+
+                    //si sizeof($rankingArray[$currentSite]) es mayor que $i, es que hay más de un resultado del mismo site, 
+                    //por lo que no añadimos posicion (mantenemos la que tuviese)
+                    //calculamos la visibilidad para cualquiera de los casos
+                    //ya existe valor de visibilidad porque siempre que hay una posicion hay un valor 
+                    //de visibilidad
+                    $visibilityArray[$currentSite] = $visibilityArray[$currentSite] + (4-$serpresult->getSubRank());
+                }else{
+                    //es la primera vez que aparece el site así que simplemente asignamos los valores
+                    for($temp=0;$temp<$serpNumber;$temp++){
+                        $rankingArray[$currentSite][] = array($scrappedTimes[$temp] => null);
+                    }
+                    $rankingArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $serpresult->getSubrank());
+                    $visibilityArray[$currentSite] = 4-$serpresult->getSubrank();
+                }
+            }   
+            $i++;
+        }
+        foreach ($rankingArray as $key => $rankingDomain) {
+            //cuantos elementos tiene el array?
+            $temp = sizeof($rankingDomain);
+            //si el número de elementos es menor que la cantidad de serp que llevamos, rellenamos con null
+            
+            if($temp<($serpNumber+1)){
+                for($temp;$temp<($serpNumber+1);$temp++){
+                    $rankingArray[$key][] = array($scrappedTimes[$temp] => null);
+                }
+            }
+        }
+        $serpNumber++;
+    }
+
+    $top1 = "";
+    $top2 = "";
+    $top3 = "";
+    $topVisibility1 = 0;
+    $topVisibility2 = 0;
+    $topVisibility3 = 0;
+    foreach ($visibilityArray as $key => $value) {
+        if($value > $topVisibility1){
+            $topVisibility1 = $value;
+            $top1 = $key;
+        }else if($value > $topVisibility2){
+            $topVisibility2 = $value;
+            $top2 = $key;
+        }else if($value > $topVisibility3){
+            $topVisibility3 = $value;
+            $top3 = $key;
+        }
+    }
+
+
+   if($top1 != ""){
+        $currentIndex = 0;
+        $dataTemp = array(); 
+
+        for($x=0;$x<sizeof($rankingArray[$top1]);$x++){
+            $currentTime = $scrappedTimes[$x];
+            $dataTemp[] = array($scrappedTimes[$x]);
+            foreach ($rankingArray as $site => $rank) {
+                array_push($dataTemp[$currentIndex], $rank[$x][$currentTime]);
+            }
+            $currentIndex++;
+        }
+
+    
+
+
+        $encoders = array(new JsonEncoder());
+        $normalizers = array(new GetSetMethodNormalizer());
+
+        $serializer = new Serializer($normalizers, $encoders);
+        $dataTemp = $serializer->serialize($dataTemp, 'json');
+        $columns = array('Minuto');
+        foreach ($rankingArray as $site => $rankings) {
+            $columns[] = $site;
+        }
+        return $app['twig']->render('projectresults.html.twig', array('data' => $dataTemp, 'columns'=>$columns, 'keyword'=>$keyword->getName(), 'otherKeywords' => $otherKeywords));
+   }
+
+    $encoders = array(new JsonEncoder());
+    $normalizers = array(new GetSetMethodNormalizer());
+
+    $serializer = new Serializer($normalizers, $encoders);
+    $data = $serializer->serialize($data, 'json');
+    $currentKeyword = $keyword->getName();
+
+
+
+
+    return $app['twig']->render('projectresults.html.twig', array('data' => $data, 'otherKeywords' => $otherKeywords));
+
+
+
+})->bind('projectResultsKeyword');
+
 //VER RESULTADOS PROYECTO
 $app->match('/projectResults/{id}', function(Request $request, $id) use ($app){
     $em = $app['orm.em'];
 
-    $pojectsRepository = $em->getRepository('\Dev\Pub\Entity\Project');
-    $project = $pojectsRepository->findOneBy(array('id' => $id));
+    $projectsRepository = $em->getRepository('\Dev\Pub\Entity\Project');
+    $project = $projectsRepository->findOneBy(array('id' => $id));
 
     $keywords = $project->getKeywords();
+
+    foreach ($keywords as $keyword) {
+        $url = $app['url_generator']->generate('projectResultsKeyword', array('projectId' => $id, 'keywordId' => $keyword->getId()));
+        return $app->redirect($url);
+    }
+
+    return $app->redirect();
 
     foreach ($keywords as $keyword) {
         //para cada keyword pintaremos una gráfica, con los top dominios y la evolución de cada uno.
@@ -102,7 +253,7 @@ $app->match('/projectResults/{id}', function(Request $request, $id) use ($app){
         $rankingArray = array();
         $scrappedTimes = array();
         
-        if($keyword->getName()=="vuelta a españa"){
+        if($keyword->getName()=="lina morgan"){
             foreach ($serps as $serp) {                
                 $serpresults = $serp->getSerpResults();
                 $scrappedTimes[] = date_format($serp->getTimestamp(), 'Y-m-d H:i:s');
@@ -386,7 +537,7 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                             $tempSERPresult->setUrlFbTotalCount($counts['Facebook']['total_count']);
                             $tempSERPresult->setUrlPlusOneCount($counts['GooglePlusOne']);
 
-                            $curl = curl_init();
+                            /*$curl = curl_init();
                             $apiKey = "AIzaSyDtMneF9wgZDs5dUE6QbxQCN6-dkiraBUs";
                             $url = $tempSERPresult->getUrl();
                             curl_setopt_array($curl, array(
@@ -403,7 +554,7 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                                 $tempSERPresult->setUrlMobileFriendly(1);
                             }else{
                                 $tempSERPresult->setUrlMobileFriendly(0);
-                            }
+                            }*/
 
 
                             $serp->addSerpResult($tempSERPresult);

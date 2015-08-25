@@ -33,7 +33,11 @@
 
         for(var i=0;i<dataArray.length;i++){
           var tempDate = new Date(dataArray[i][0]);
-          data.addRow([tempDate, dataArray[i][1], dataArray[i][2],dataArray[i][3]]);
+          var tempArray = [tempDate];
+          for(j=1;j<dataArray[i].length;j++){
+            tempArray.push(dataArray[i][j]);
+          }
+          data.addRow(tempArray);
         }
         var keyword = "{{ keyword }}";
         var title = "Posicionamiento en News: "+keyword;
@@ -48,7 +52,8 @@
                        'width':900,
                        'height':300,
                        'vAxis': {'direction': -1},
-                        'focusTarget': 'category'};
+                       'focusTarget': 'category',
+                       'pointSize': 3};
 
         // Instantiate and draw our chart, passing in some options.
         var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
@@ -56,5 +61,12 @@
       }
     </script>
     <div id="chart_div"></div>
+    <h3>Ver los resultados de otras keywords de este proyecto:</h3>
+    <ul>
+    {% for item in otherKeywords %}
+      <li><a href="{{ item[1] }}">{{item[0]}}</a></li>
+    {% endfor %}
+    </ul>
+
 {% endblock %}
         
