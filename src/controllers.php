@@ -14,12 +14,42 @@ use Symfony\Component\Serializer\Serializer;
 
 //HOMEPAGE
 $app->match('/', function () use ($app) {
-    //$app['session']->getFlashBag()->add('warning', 'Warning flash message');
-    //$app['session']->getFlashBag()->add('info', 'Info flash message');
-    //$app['session']->getFlashBag()->add('success', 'Success flash message');
-    //$app['session']->getFlashBag()->add('error', 'Error flash message');
+    $em = $app['orm.em'];
+    $q = $em->createQuery("select p from \Dev\Pub\Entity\Project p where p.start_date < CURRENT_TIMESTAMP() and p.end_date > CURRENT_TIMESTAMP()");
+    $currentProjects = $q->getResult();
 
-    return $app['twig']->render('index.html.twig');
+    $currentProjectsArray = array();
+    $futureProjectsArray = array();
+    $pastProjectsArray = array();
+
+    foreach ($currentProjects as $project) {
+        $projectName = $project->getName();
+        $projectId = $project->getId();
+        $url = $app['url_generator']->generate('projectResults', array('id' => $projectId));
+        $currentProjectsArray[] = array($projectName, $url);
+    }
+
+    $q = $em->createQuery("select p from \Dev\Pub\Entity\Project p where p.end_date < CURRENT_TIMESTAMP() ORDER BY p.end_date DESC")->setMaxResults(5);
+    $pastProjects = $q->getResult();
+
+    foreach ($pastProjects as $project) {
+        $projectName = $project->getName();
+        $projectId = $project->getId();
+        $url = $app['url_generator']->generate('projectResults', array('id' => $projectId));
+        $pastProjectsArray[] = array($projectName, $url);
+    }
+
+    $q = $em->createQuery("select p from \Dev\Pub\Entity\Project p where p.start_date > CURRENT_TIMESTAMP() ORDER BY p.start_date DESC")->setMaxResults(5);
+    $futureProjects = $q->getResult();
+
+    foreach ($futureProjects as $project) {
+        $projectName = $project->getName();
+        $projectId = $project->getId();
+        $url = $app['url_generator']->generate('projectResults', array('id' => $projectId));
+        $projectStartDate = $project->getStartDate();
+        $futureProjectsArray[] = array($projectName, $url);
+    }
+    return $app['twig']->render('index.html.twig', array('currentProjects' => $currentProjectsArray, 'pastProjects'=>$pastProjectsArray, 'futureProjects'=>$futureProjectsArray));
 })->bind('homepage');
 
 
@@ -45,10 +75,6 @@ $app->match('/login', function (Request $request) use ($app) {
 })->bind('login');
 
 
-
-
-
-
 //NUEVO PROYECTO
 $app->match('/newProject', function(Request $request) use ($app){
     $em = $app['orm.em'];
@@ -60,26 +86,77 @@ $app->match('/newProject', function(Request $request) use ($app){
         $em->persist($entity);
         $em->flush();
     } 
-
-
     return $app['twig']->render('newproject.html.twig', array('form' => $form->createView()));
 })->bind('newProject');
 
+
 //AÑADIR KEYWORDS
-$app->match('/addKeywords', function(Request $request) use ($app){
+$app->match('/addKeywords/{projectId}', function(Request $request, $projectId) use ($app){
     $em = $app['orm.em'];
-    $entity = new \Dev\Pub\Entity\Keyword();
 
-    $form = $app['form.factory']->create(new \Dev\Pub\Keyword\KeywordType(), $entity); 
-    $form->handleRequest($request);
-    if ($form->isValid()) {
-        $em->persist($entity);
-        $em->flush();
-    } 
+    $projectsRepository = $em->getRepository('\Dev\Pub\Entity\Project');
+    $project = $projectsRepository->findOneBy(array('id' => $projectId));
 
+    //solo se pueden añadir keywords en proyectos en ejecución o futuros, por lo lo que comprobamos si este proyecto es elegible
+    $now = new \DateTime();
+    if($project->getEndDate() > $now){
+        $keywords = $project->getKeywords();
+        $currentKeywords = array();
+        foreach ($keywords as $keyword) {
+            $currentKeywords[] = $keyword->getName();
+        }
+        $data = array();
+        $form = $app['form.factory']->createBuilder('form', $data)
+            ->add('keyword1', 'text')
+            ->add('keyword2', 'text', array('required'=>false, 'empty_data'  => null))
+            ->add('keyword3', 'text', array('required'=>false, 'empty_data'  => null))
+            ->add('keyword4', 'text', array('required'=>false, 'empty_data'  => null))
+            ->getForm();
+        $form->handleRequest($request);
+        if ($form->isValid()) {
+            $data = $form->getData();
+            foreach ($data as $keyword) {
+                if($keyword != NULL){
+                    $newKeyword = new \Dev\Pub\Entity\Keyword();
+                    $newKeyword->setName($keyword);
+                    $newKeyword->addProject($project);
+                    $project->addKeyword($newKeyword);
+                    $em->persist($newKeyword);
+                    $em->persist($project);
+                }
+            }
+            $em->flush();
+            return $app->redirect($request->getRequestUri());
+        } 
+        return $app['twig']->render('addkeywords.html.twig', array('currentKeywords'=>$currentKeywords, 'form' => $form->createView()));
+    }
 
-    return $app['twig']->render('addkeywords.html.twig', array('form' => $form->createView()));
+    return $app['twig']->render('addkeywords.html.twig', array('form' => "El proyecto ya ha finalizado."));
 })->bind('addKeywords');
+
+//VER RESULTADOS PROYECTO+KEYWORD
+$app->match('/projectResults/{projectId}/{keywordId}/{siteName}', function(Request $request, $projectId, $keywordId, $siteName) use ($app){
+    $em = $app['orm.em'];
+    $keywordsRepository = $em->getRepository('\Dev\Pub\Entity\Keyword');
+    $keyword = $keywordsRepository->findOneBy(array('id'=>$keywordId));
+    $serps = $keyword->getSerps();
+    $rows = array();
+    foreach ($serps as $serp) {
+        $serpResults = $serp->getSerpResults();
+        foreach ($serpResults as $serpResult) {
+            $site = $serpResult->getSite();
+            $type = $serpResult->getType();
+            if($type == "news" && $site == $siteName){
+                $date = $serp->getTimestamp();
+                
+                $rows[] = array(date_format($date, 'H:i:s'),$serpResult->getTitle(), $serpResult->getUrlH1(), "<a href=\"".$serpResult->getUrl()."\" target=\"blank\">".$serpResult->getUrl()."</a>");
+            }
+        }
+    }
+
+    $columns = array("hora", "title", "h1", "url");
+    return $app['twig']->render('projectKeywordSiteResults.html.twig', array('site'=>$siteName, 'columns'=>$columns, 'rows'=>$rows));
+})->bind('projectResultsKeywordSite');
 
 //VER RESULTADOS PROYECTO+KEYWORD
 $app->match('/projectResults/{projectId}/{keywordId}', function(Request $request, $projectId, $keywordId) use ($app){
@@ -181,7 +258,7 @@ $app->match('/projectResults/{projectId}/{keywordId}', function(Request $request
     }
 
 
-   if($top1 != ""){
+    if($top1 != ""){
         $currentIndex = 0;
         $dataTemp = array(); 
 
@@ -207,22 +284,10 @@ $app->match('/projectResults/{projectId}/{keywordId}', function(Request $request
             $columns[] = $site;
         }
         return $app['twig']->render('projectresults.html.twig', array('data' => $dataTemp, 'columns'=>$columns, 'keyword'=>$keyword->getName(), 'otherKeywords' => $otherKeywords));
-   }
+    }
+    $data = array();
 
-    $encoders = array(new JsonEncoder());
-    $normalizers = array(new GetSetMethodNormalizer());
-
-    $serializer = new Serializer($normalizers, $encoders);
-    $data = $serializer->serialize($data, 'json');
-    $currentKeyword = $keyword->getName();
-
-
-
-
-    return $app['twig']->render('projectresults.html.twig', array('data' => $data, 'otherKeywords' => $otherKeywords));
-
-
-
+    return $app['twig']->render('projectresults.html.twig', array('data' => $data, 'keyword'=>$keyword->getName(),'otherKeywords' => $otherKeywords));
 })->bind('projectResultsKeyword');
 
 //VER RESULTADOS PROYECTO

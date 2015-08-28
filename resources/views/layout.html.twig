@@ -29,8 +29,6 @@
                 <a class="brand" href="{{ path('homepage') }}">{{ 'NewsSerpMonitor'|trans }}</a>
                 <div class="nav-collapse">
                     <ul class="nav">
-                        <li {% if 'homepage' == active %}class="active"{% endif %}><a href="{{ path('homepage') }}">{{ 'Homepage'|trans }}</a></li>
-                        <li {% if 'page_with_cache' == active %}class="active"{% endif %}><a href="{{ path('page_with_cache') }}">Cache sample</a></li>
                         <li {% if 'new_project' == active %}class="active"{% endif %}><a href="{{ path('newProject') }}">Nuevo Proyecto</a></li>
                         <li class="dropdown{% if 'account' == active %} active{% endif %}">
                             <a href="#" class="dropdown-toggle" data-toggle="dropdown">

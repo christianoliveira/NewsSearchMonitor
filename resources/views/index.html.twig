@@ -3,11 +3,34 @@
 
 {% block content %}
 
-    <h1>Hello</h1>
-    {% if is_granted('ROLE_USER') %}
-        Hello "{{ app.security.token.username }}".<br />
-        <a href="{{ path('logout') }}">{{ 'Logout'|trans }}</a>
-    {% else %}
-        You're not logged. Please <a href="{{ path('login') }}">{{ 'connect'|trans }}</a>
+    <h1>News Serp Monitor</h1>
+    <h2>Proyectos activos</h2>
+	{% if currentProjects %}
+	    <ul>
+	    	{% for item in currentProjects %}
+		      <li><a href="{{ item[1] }}">{{item[0]}}</a></li>
+		    {% endfor %}
+	    </ul>
+	{% else %}
+	<p>No hay proyectos en marcha</p>
+	{% endif %}
+    <a class="btn btn-primary btn-lg" href="{{ path('newProject') }}" role="button">Nuevo Proyecto »</a>
+    {% if futureProjects %}
+    	<h2>Proyectos futuros</h2>
+    	<ul>
+	    	{% for item in futureProjects %}
+		      <li><a href="{{ item[1] }}">{{item[0]}}</a></li>
+		    {% endfor %}
+	    </ul>
     {% endif %}
+
+    {% if pastProjects %}
+	    <h2>Proyectos anteriores</h2>
+	    <ul>
+	    	{% for item in pastProjects %}
+		      <li><a href="{{ item[1] }}">{{item[0]}}</a></li>
+		    {% endfor %}
+	    </ul>
+	{% endif %}	
+    
 {% endblock %}

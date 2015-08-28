@@ -2,6 +2,20 @@
 {% set active = 'add_keywords' %}
 
 {% block content %}
-    <h1>{{ 'Añadir Keywords'|trans }}</h1>
-    {{ form(form, {action: path('addKeywords')}) }}
+	<h1>Añadir keywords al proyecto</h1>
+	{% if currentKeywords is defined%}
+		<h2>Keywords actuales</h2>
+		<ul>
+		{% for item in currentKeywords %}
+			<li>{{item}}</li>
+		{% endfor %}
+		</ul>
+		<form action="#" method="post">
+		    {{ form_widget(form) }}
+
+		    <input type="submit" name="submit" />
+		</form>
+
+	{% endif %}
+    
 {% endblock %}
