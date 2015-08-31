@@ -31,7 +31,7 @@
         "twig/twig"             : "~1.10",
         "twig/extensions"       : "*",
         "silex/web-profiler"    : "~1.0.1",
-        "twitter/bootstrap"     : "2.3.2",
+        "twbs/bootstrap"        : "~3.3",
         "dflydev/doctrine-orm-service-provider": "1.0.6",
         "fabpot/goutte"         : "2.0.4",
         "ghunti/highcharts-php": "~3.0"
