@@ -1,0 +1,87 @@
+{% extends 'layout.html.twig' %}
+
+{% block content %}
+    <h1>Evolución de "{{ site }}" para la keyword "{{ keyword }}"</h1>
+    <ul class="nav nav-tabs" role="tablist">
+      <li class="active"><a href="#titleReport" role="tab" data-toggle="tab" >Title Report</a></li>
+      <li><a href="#timeReport" role="tab" data-toggle="tab">Time Report</a></li>
+      <li><a href="#socialReport" role="tab" data-toggle="tab">Social Report</a></li>
+    </ul>
+
+    <div class="tab-content">
+      <div role="tabpanel" class="tab-pane table-responsive active" id="titleReport">
+        <h2>Title Report</h2>
+        <table class="table table-striped table-borderd">
+          <thead>
+            {% if headLineReportColumns is defined %}
+              {% for column in headLineReportColumns %}
+                  <th>{{column}}</th>
+              {% endfor %}
+            {% endif %}
+          </thead>
+          <tbody>
+            {% if headLineReportRows is defined %}
+              {% for row in headLineReportRows %}
+                <tr>
+                {% for element in row %}
+                  <th>{{ element }}</th>
+                {% endfor %}
+                </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div role="tabpanel" class="tab-pane table-responsive" id="timeReport">
+        <h2>Time Report</h2>
+        <table class="table table-striped table-borderd">
+          <thead>
+            {% if updatedTimeReportColumns is defined %}
+              {% for column in updatedTimeReportColumns %}
+                  <th>{{column}}</th>
+              {% endfor %}
+            {% endif %}
+          </thead>
+          <tbody>
+            {% if updatedTimeReportRows is defined %}
+              {% for row in updatedTimeReportRows %}
+                <tr>
+                {% for element in row %}
+                  <th>{{ element }}</th>
+                {% endfor %}
+                </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+    <div role="tabpanel" class="tab-pane table-responsive" id="socialReport">
+        <h2>Social Report</h2>
+        <table class="table table-striped table-borderd">
+          <thead>
+            {% if socialReportColumns is defined %}
+              {% for column in socialReportColumns %}
+                  <th>{{column}}</th>
+              {% endfor %}
+            {% endif %}
+          </thead>
+          <tbody>
+            {% if socialReportRows is defined %}
+              {% for row in socialReportRows %}
+                <tr>
+                {% for element in row %}
+                  <th>{{ element }}</th>
+                {% endfor %}
+                </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+{% endblock %}
+        
