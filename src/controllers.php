@@ -134,104 +134,28 @@ $app->match('/addKeywords/{projectId}', function(Request $request, $projectId) u
     return $app['twig']->render('addkeywords.html.twig', array('form' => "El proyecto ya ha finalizado."));
 })->bind('addKeywords');
 
-//VER RESULTADOS PROYECTO+KEYWORD+SITE
+//VER RESULTADOS PROYECTO+KEYWORD
 $app->match('/projectResults/{projectId}/{keywordId}/{siteName}', function(Request $request, $projectId, $keywordId, $siteName) use ($app){
     $em = $app['orm.em'];
     $keywordsRepository = $em->getRepository('\Dev\Pub\Entity\Keyword');
     $keyword = $keywordsRepository->findOneBy(array('id'=>$keywordId));
     $serps = $keyword->getSerps();
-    $headLineReportRows = array();
-    $updatedTimeReportRows = array();
-    $serpCount = 0;
-    $actualCount = 0;
-
+    $rows = array();
     foreach ($serps as $serp) {
         $serpResults = $serp->getSerpResults();
-        $serpCount++;
         foreach ($serpResults as $serpResult) {
             $site = $serpResult->getSite();
             $type = $serpResult->getType();
-            $date = $serp->getTimestamp();
-            $printDate = date_format($date, 'H:i:s');
             if($type == "news" && $site == $siteName){
-                $actualCount++;
+                $date = $serp->getTimestamp();
                 
-                $headLineReportRows[] = array(
-                    $printDate,
-                    $serpResult->getUrl(),
-                    $serpResult->getTitle(),
-                    $serpResult->getURLTitle(), 
-                    $serpResult->getUrlH1(), 
-                    $serpResult->getSubrank()
-                );
-
-                $updatedTimeReportRows[] = array(
-                    $printDate,
-                    $serpResult->getUrl(),
-                    $serpResult->getTitle(),
-                    $serpResult->getSubrank(),
-                    $serpResult->getURLDate(),
-                    $serpResult->getURLDateIssued(),
-                    $serpResult->getURLTextDate(),
-                );
-
-                $socialReportRows[] = array(
-                    $printDate,
-                    $serpResult->getUrl(),
-                    $serpResult->getUrlTweetCount(),
-                    $serpResult->getUrlFbLikeCount(),
-                    $serpResult->getUrlFbShareCount(),
-                    $serpResult->getUrlFbTotalCount(),
-                    $serpResult->getUrlPlusOneCount(),
-                );
-            }else if($serpCount > $actualCount){
-                $headLineReportRows[] = array(
-                    $printDate,
-                    "-",
-                    "-",
-                    "-", 
-                    "-", 
-                    "-"
-                );
-
-                $updatedTimeReportRows[] = array(
-                    $printDate,
-                    "-",
-                    "-",
-                    "-", 
-                    "-", 
-                    "-",
-                    "-"
-                );
-
-                $socialReportRows[] = array(
-                    $printDate,
-                    $serpResult->getUrl(),
-                    "-",
-                    "-",
-                    "-", 
-                    "-", 
-                    "-"
-                );
-                $actualCount++;
+                $rows[] = array(date_format($date, 'H:i:s'),$serpResult->getTitle(), $serpResult->getUrlH1(), "<a href=\"".$serpResult->getUrl()."\" target=\"blank\">".$serpResult->getUrl()."</a>");
             }
         }
     }
 
-    $headLineReportColumns = array("hora", "url", "title en news", "title noticia", "h1 noticia", "ranking");
-    $updatedTimeReportColumns = array("hora", "url", "title en news", "ranking", "etiqueta Date", "etiqueta Date.issued", "hora en texto");
-    $socialReportColumns = array("hora", "url", "tweets", "FB Likes", "FB Shares", "FB Total", "+1s");
-    return $app['twig']
-        ->render('projectKeywordSiteResults.html.twig', 
-        array(
-            'site'=>$siteName, 
-            'headLineReportColumns'=>$headLineReportColumns, 
-            'headLineReportRows'=>$headLineReportRows,
-            'updatedTimeReportRows'=>$updatedTimeReportRows,
-            'updatedTimeReportColumns'=>$updatedTimeReportColumns,
-            'socialReportRows'=>$socialReportRows,
-            'socialReportColumns'=>$socialReportColumns,
-            'keyword'=>$keyword->getName()));
+    $columns = array("hora", "title", "h1", "url");
+    return $app['twig']->render('projectKeywordSiteResults.html.twig', array('site'=>$siteName, 'columns'=>$columns, 'rows'=>$rows));
 })->bind('projectResultsKeywordSite');
 
 //VER RESULTADOS PROYECTO+KEYWORD
@@ -521,25 +445,8 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                 $currentKeyword = str_replace(' ', '+', $keywords[$j]->getName());
                 //$url = "http://www.".$currentProjects[$i]->getSearchEngine()."/search?q=".$currentKeyword."&hl=".$currentProjects[$i]->getLanguage()."&gl=".$currentProjects[$i]->getCountry()."&pws=0";
                 $url = "http://www.google.es/search?q=".$currentKeyword."&hl=".$currentProjects[$i]->getLanguage()."&gl=".$currentProjects[$i]->getCountry()."&pws=0";
-                //$tempHtml = new DOMDocument;
-                //@$tempHtml->loadHtmlFile($url);
-                $proxies = array();
-                //Aquí añadiríamos al array de proxies los proxies que tengamos para poder evitar ser baneados por Google
-
-
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL,$url);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
-
-                //y este código es el que se encarga de setear el proxy en caso de que haya
-                if(isset($proxies)){
-                    $proxy = $proxies[array_rand($proxies)];
-                    curl_setopt($ch, CURLOPT_PROXY, $proxy);
-                }
-                $returnHtml = curl_exec($ch);
-                curl_close ($ch);
                 $tempHtml = new DOMDocument;
-                @$tempHtml->loadHtml($returnHtml);
+                @$tempHtml->loadHtmlFile($url);
                 if($tempHtml == FALSE){
                     echo "<br>ERROR<br>";
                 }
@@ -683,14 +590,10 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                             $tempSERPresult->setUrlOutLinksCount($outLinksCount);
                             $tempSERPresult->setUrlInLinksCount($inLinksCount);
 
-                            $apiEndPoint = "https://free.sharedcount.com";
+                            $apiEndPoint = "https://free.sharedcount.com/";
                             $apiKey = "4a70e6281740d91abe3fab751110db54cad34637";
                             $apiCallUrl = $apiEndPoint."?url=".$tempSERPresult->getUrl()."&apikey=".$apiKey;
-                            $ch = curl_init();
-                            curl_setopt($ch, CURLOPT_URL,$apiCallUrl);
-                            curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
-                            $returnJson = curl_exec($ch);
-                            curl_close ($ch);
+                            $returnJson = file_get_contents($apiCallUrl);
                             $counts = json_decode($returnJson, true);
                             $tempSERPresult->setUrlTweetCount($counts['Twitter']);
                             $tempSERPresult->setUrlFbLikeCount($counts['Facebook']['like_count']);
