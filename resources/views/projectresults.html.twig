@@ -16,55 +16,84 @@
 
         // Create the data table.
 
-        var data = new google.visualization.DataTable();
+        var dataRank = new google.visualization.DataTable();
+        var dataVisib = new google.visualization.DataTable();
 
         var j=0;
 
-        {% if data is defined and columns is defined %}
+        {% if dataRanking is defined and columns is defined %}
 
           {% for item in columns %}
             if(j==0){
-              data.addColumn('datetime', 'minute');
+              dataRank.addColumn('datetime', 'minute');
+              dataVisib.addColumn('datetime', 'minute');
               j++;
             }else{
-              data.addColumn('number', '{{item}}');
+              dataRank.addColumn('number', '{{item}}');
+              dataVisib.addColumn('number', '{{item}}');
             }
           {% endfor %}
 
-          var dataArray = {{ data|raw }};
+          var dataArrayRanking = {{ dataRanking|raw }};
+          var dataArrayVisibility = {{ dataVisibility|raw}}
 
-          for(var i=0;i<dataArray.length;i++){
-            var tempDate = new Date(dataArray[i][0]);
+          for(var i=0;i<dataArrayRanking.length;i++){
+            var tempDate = new Date(dataArrayRanking[i][0]);
             var tempArray = [tempDate];
-            for(j=1;j<dataArray[i].length;j++){
-              tempArray.push(dataArray[i][j]);
+            for(j=1;j<dataArrayRanking[i].length;j++){
+              tempArray.push(dataArrayRanking[i][j]);
             }
-            data.addRow(tempArray);
+            dataRank.addRow(tempArray);
+          }
+          for(var i=0;i<dataArrayVisibility.length;i++){
+            var tempDate = new Date(dataArrayVisibility[i][0]);
+            var tempArray = [tempDate];
+            for(j=1;j<dataArrayVisibility[i].length;j++){
+              tempArray.push(dataArrayVisibility[i][j]);
+            }
+            dataVisib.addRow(tempArray);
           }
           var keyword = "{{ keyword }}";
           var title = "Posicionamiento en News: "+keyword;
 
           // Set chart options
           var options = {'title': title,
-                         'width':900,
+                         'width':1100,
                          'height':500,
                          'vAxis': {'direction': -1, 'maxValue': 3, 'minValue': 1},
                          'focusTarget': 'category',
-                         'pointSize': 3,
+                         'pointSize': 8,
+                         'lineWidth': 7,
+                         'chartArea': { left: "0" },
                          'explorer': { actions: ['dragToZoom', 'rightClickToReset'], axis: 'horizontal' }
                        };
 
           // Instantiate and draw our chart, passing in some options.
           var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-          chart.draw(data, options);
+          var chart2 = new google.visualization.AreaChart(document.getElementById('vis_div'));
+          chart.draw(dataRank, options);
+
+          var title = "Visibilidad de cada dominio para: "+keyword;
+
+          var options = {'title': title,
+                         'width':1100,
+                         'height':500,
+                         'focusTarget': 'category',
+                         'pointSize': 5,
+                         'lineWidth': 2,
+                         'chartArea': { left: "0" },
+                         'explorer': { actions: ['dragToZoom', 'rightClickToReset'], axis: 'horizontal' }
+                       };
+          chart2.draw(dataVisib, options);
         {% endif %}
       }
     </script>
     <h1>Resultados de "{{ keyword }}"</h1>
-    {% if data is empty %}
+    {% if dataRanking is empty %}
       <p>Los resultados comenzarán a aparecer aquí en un rato.</p>
     {% endif %}
     <div id="chart_div"></div>
+    <div id="vis_div"></div>
     <h4>Ver los resultados de otras keywords de este proyecto:</h4>
     <ul>
     {% for item in otherKeywords %}

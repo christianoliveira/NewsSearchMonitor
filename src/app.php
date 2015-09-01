@@ -119,4 +119,7 @@ if (isset($app['assetic.enabled']) && $app['assetic.enabled']) {
 $app->register(new Silex\Provider\DoctrineServiceProvider());
 $app->register(new Dflydev\Silex\Provider\DoctrineOrm\DoctrineOrmServiceProvider());
 
+$app['visibilityFirst'] = 70;
+$app['visibilitySecond'] = 20;
+$app['visibilityThird'] = 10;
 return $app;

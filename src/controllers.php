@@ -259,47 +259,89 @@ $app->match('/projectResults/{projectId}/{keywordId}', function(Request $request
     $rankingArray = array();
     $scrappedTimes = array();
     
-    foreach ($serps as $serp) {                
+    foreach ($serps as $serp) { 
+        //recorremos serps               
         $serpresults = $serp->getSerpResults();
         $scrappedTimes[] = date_format($serp->getTimestamp(), 'Y-m-d H:i:s');
         foreach ($serpresults as $serpresult) {
+            //recorremos cada resultado
             if($serpresult->getType()=="news"){
+                //nos quedamos sólo con los del tipo "news"
                 $currentSite = $serpresult->getSite();
-
-                //Tenemos que saber si es la primera vez que aparece el site o no. 
                 if(array_key_exists($currentSite, $rankingArray)){
-                    //ya tenemos datos del site! tenemos que saber si hay vacíos o no
+                    //No es la primera vez
                     if(sizeof($rankingArray[$currentSite])<$serpNumber){
-                        //hay que rellenar
+                        //hay que rellenar hasta la fecha actual
                         for($temp=sizeof($rankingArray[$currentSite]); $temp<($serpNumber); $temp++){
                             //por cada hueco añadimos un null
                             $rankingArray[$currentSite][] = array($scrappedTimes[$temp] => null);
+                            $visibilityArray[$currentSite][] = array($scrappedTimes[$temp] => end($visibilityArray[$currentSite][$temp-1]));
                         }
                         //al terminar añadimos el valor actual
                         $rankingArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $serpresult->getSubrank());
+                        switch ($serpresult->getSubrank()) {
+                            case 1:
+                                $currentVisibility = end($visibilityArray[$currentSite][$serpNumber-1]) + $app['visibilityFirst'];
+                                break;
+                            case 2:
+                                $currentVisibility = end($visibilityArray[$currentSite][$serpNumber-1]) + $app['visibilitySecond'];
+                                break;
+                            case 3:
+                                $currentVisibility = end($visibilityArray[$currentSite][$serpNumber-1]) + $app['visibilityThird'];
+                                break;
+                            default:
+                                $currentVisibility = 0;
+                                break;
+                        }
+                        $visibilityArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $currentVisibility);
                     }
                     else if(sizeof($rankingArray[$currentSite]) == $serpNumber){
-                        //es el valor que toca
+                        //es el valor que toca, no hay que rellenar
                         $rankingArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $serpresult->getSubrank());
-                    }
-
-                    //si sizeof($rankingArray[$currentSite]) es mayor que $i, es que hay más de un resultado del mismo site, 
-                    //por lo que no añadimos posicion (mantenemos la que tuviese)
-                    //calculamos la visibilidad para cualquiera de los casos
-                    //ya existe valor de visibilidad porque siempre que hay una posicion hay un valor 
-                    //de visibilidad
-                    $visibilityArray[$currentSite] = $visibilityArray[$currentSite] + (4-$serpresult->getSubRank());
+                        switch ($serpresult->getSubrank()) {
+                            case 1:
+                                $currentVisibility = end($visibilityArray[$currentSite][$serpNumber-1]) + $app['visibilityFirst'];
+                                break;
+                            case 2:
+                                $currentVisibility = end($visibilityArray[$currentSite][$serpNumber-1]) + $app['visibilitySecond'];
+                                break;
+                            case 3:
+                                $currentVisibility = end($visibilityArray[$currentSite][$serpNumber-1]) + $app['visibilityThird'];
+                                break;
+                            default:
+                                $currentVisibility = 0;
+                                break;
+                        }
+                        $visibilityArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $currentVisibility);
+                    }                    
                 }else{
                     //es la primera vez que aparece el site así que simplemente asignamos los valores
                     for($temp=0;$temp<$serpNumber;$temp++){
+                        //rellenamos con null hasta la fecha actual, si procede
                         $rankingArray[$currentSite][] = array($scrappedTimes[$temp] => null);
+                        $visibilityArray[$currentSite][] = array($scrappedTimes[$temp] => null);
                     }
                     $rankingArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $serpresult->getSubrank());
-                    $visibilityArray[$currentSite] = 4-$serpresult->getSubrank();
+                    switch ($serpresult->getSubrank()) {
+                        case 1:
+                            $currentVisibility = $app['visibilityFirst'];
+                            break;
+                        case 2:
+                            $currentVisibility = $app['visibilitySecond'];
+                            break;
+                        case 3:
+                            $currentVisibility = $app['visibilityThird'];
+                            break;
+                        default:
+                            $currentVisibility = 0;
+                            break;
+                    }
+                    $visibilityArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $currentVisibility);
                 }
             }   
             $i++;
         }
+      
         foreach ($rankingArray as $key => $rankingDomain) {
             //cuantos elementos tiene el array?
             $temp = sizeof($rankingDomain);
@@ -311,28 +353,55 @@ $app->match('/projectResults/{projectId}/{keywordId}', function(Request $request
                 }
             }
         }
+
+        foreach ($visibilityArray as $key => $visibilityDomain) {
+            //cuantos elementos tiene el array?
+            $temp = sizeof($visibilityDomain);
+            //si el número de elementos es menor que la cantidad de serp que llevamos, rellenamos con null
+            
+            if($temp<($serpNumber+1)){
+                for($temp;$temp<($serpNumber+1);$temp++){
+                    $visibilityArray[$key][] = array($scrappedTimes[$temp] => end($visibilityArray[$key][$temp-1]));
+                }
+            }
+        }
+
         $serpNumber++;
     }
 
-    $top1 = "";
-    $top2 = "";
-    $top3 = "";
-    $topVisibility1 = 0;
-    $topVisibility2 = 0;
-    $topVisibility3 = 0;
-    foreach ($visibilityArray as $key => $value) {
-        if($value > $topVisibility1){
-            $topVisibility1 = $value;
-            $top1 = $key;
-        }else if($value > $topVisibility2){
-            $topVisibility2 = $value;
-            $top2 = $key;
-        }else if($value > $topVisibility3){
-            $topVisibility3 = $value;
-            $top3 = $key;
+    if(!empty($rankingArray)){
+        foreach ($rankingArray as $key => $value) {
+            break;
         }
-    }
+        $currentIndex = 0;
+        $dataRankingTemp = array();
+        $dataVisibilityTemp = array();
 
+        for($x=0;$x<sizeof($rankingArray[$key]);$x++){
+            $currentTime = $scrappedTimes[$x];
+            $dataRankingTemp[] = array($scrappedTimes[$x]);
+            $dataVisibilityTemp[] = array($scrappedTimes[$x]);
+            foreach ($rankingArray as $site => $rank) {
+                array_push($dataRankingTemp[$currentIndex], $rank[$x][$currentTime]);
+                array_push($dataVisibilityTemp[$currentIndex], $visibilityArray[$site][$x][$currentTime]);
+            }
+            $currentIndex++;
+        }
+
+        $encoders = array(new JsonEncoder());
+        $normalizers = array(new GetSetMethodNormalizer());
+
+        $serializer = new Serializer($normalizers, $encoders);
+        $dataRankingTemp = $serializer->serialize($dataRankingTemp, 'json');
+        $dataVisibilityTemp = $serializer->serialize($dataVisibilityTemp, 'json');
+        $columns = array('Minuto');
+        foreach ($rankingArray as $site => $rankings) {
+            $columns[] = $site;
+        }
+
+        return $app['twig']->render('projectresults.html.twig', array('dataRanking' => $dataRankingTemp, 'dataVisibility' => $dataVisibilityTemp, 'columns'=>$columns, 'keyword'=>$keyword->getName(), 'otherKeywords' => $otherKeywords));
+    }
+    
 
     if($top1 != ""){
         $currentIndex = 0;
@@ -347,9 +416,6 @@ $app->match('/projectResults/{projectId}/{keywordId}', function(Request $request
             $currentIndex++;
         }
 
-    
-
-
         $encoders = array(new JsonEncoder());
         $normalizers = array(new GetSetMethodNormalizer());
 
@@ -359,6 +425,7 @@ $app->match('/projectResults/{projectId}/{keywordId}', function(Request $request
         foreach ($rankingArray as $site => $rankings) {
             $columns[] = $site;
         }
+
         return $app['twig']->render('projectresults.html.twig', array('data' => $dataTemp, 'columns'=>$columns, 'keyword'=>$keyword->getName(), 'otherKeywords' => $otherKeywords));
     }
     $data = array();
@@ -379,125 +446,6 @@ $app->match('/projectResults/{id}', function(Request $request, $id) use ($app){
         $url = $app['url_generator']->generate('projectResultsKeyword', array('projectId' => $id, 'keywordId' => $keyword->getId()));
         return $app->redirect($url);
     }
-
-    return $app->redirect();
-
-    foreach ($keywords as $keyword) {
-        //para cada keyword pintaremos una gráfica, con los top dominios y la evolución de cada uno.
-        //de momento vamos a intentar sacar la gráfica solo para el mundo para probar el formato y que todo va bien
-        $serps = $keyword->getSerps();
-        $i=0;
-        $serpNumber=0;
-
-
-        $visibilityArray = array();
-        $rankingArray = array();
-        $scrappedTimes = array();
-        
-        if($keyword->getName()=="lina morgan"){
-            foreach ($serps as $serp) {                
-                $serpresults = $serp->getSerpResults();
-                $scrappedTimes[] = date_format($serp->getTimestamp(), 'Y-m-d H:i:s');
-                foreach ($serpresults as $serpresult) {
-                    if($serpresult->getType()=="news"){
-                        $currentSite = $serpresult->getSite();
-
-                        //Tenemos que saber si es la primera vez que aparece el site o no. 
-                        if(array_key_exists($currentSite, $rankingArray)){
-                            //ya tenemos datos del site! tenemos que saber si hay vacíos o no
-                            if(sizeof($rankingArray[$currentSite])<$serpNumber){
-                                //hay que rellenar
-                                for($temp=sizeof($rankingArray[$currentSite]); $temp<($serpNumber); $temp++){
-                                    //por cada hueco añadimos un null
-                                    $rankingArray[$currentSite][] = array($scrappedTimes[$temp] => null);
-                                }
-                                //al terminar añadimos el valor actual
-                                $rankingArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $serpresult->getSubrank());
-                            }
-                            else if(sizeof($rankingArray[$currentSite]) == $serpNumber){
-                                //es el valor que toca
-                                $rankingArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $serpresult->getSubrank());
-                            }
-
-                            //si sizeof($rankingArray[$currentSite]) es mayor que $i, es que hay más de un resultado del mismo site, 
-                            //por lo que no añadimos posicion (mantenemos la que tuviese)
-                            //calculamos la visibilidad para cualquiera de los casos
-                            //ya existe valor de visibilidad porque siempre que hay una posicion hay un valor 
-                            //de visibilidad
-                            $visibilityArray[$currentSite] = $visibilityArray[$currentSite] + (4-$serpresult->getSubRank());
-                        }else{
-                            //es la primera vez que aparece el site así que simplemente asignamos los valores
-                            for($temp=0;$temp<$serpNumber;$temp++){
-                                $rankingArray[$currentSite][] = array($scrappedTimes[$temp] => null);
-                            }
-                            $rankingArray[$currentSite][] = array($scrappedTimes[$serpNumber] => $serpresult->getSubrank());
-                            $visibilityArray[$currentSite] = 4-$serpresult->getSubrank();
-                        }
-                    }   
-                    $i++;
-                }
-                foreach ($rankingArray as $key => $rankingDomain) {
-                    //cuantos elementos tiene el array?
-                    $temp = sizeof($rankingDomain);
-                    //si el número de elementos es menor que la cantidad de serp que llevamos, rellenamos con null
-                    
-                    if($temp<($serpNumber+1)){
-                        for($temp;$temp<($serpNumber+1);$temp++){
-                            $rankingArray[$key][] = array($scrappedTimes[$temp] => null);
-                        }
-                    }
-                }
-                $serpNumber++;
-            }
-        }
-
-        $top1 = "";
-        $top2 = "";
-        $top3 = "";
-        $topVisibility1 = 0;
-        $topVisibility2 = 0;
-        $topVisibility3 = 0;
-        foreach ($visibilityArray as $key => $value) {
-            if($value > $topVisibility1){
-                $topVisibility1 = $value;
-                $top1 = $key;
-            }else if($value > $topVisibility2){
-                $topVisibility2 = $value;
-                $top2 = $key;
-            }else if($value > $topVisibility3){
-                $topVisibility3 = $value;
-                $top3 = $key;
-            }
-        }
-
-
-       if($top1 != ""){       
-            for($x=0;$x<sizeof($rankingArray[$top1]);$x++){
-                $currentTime = $scrappedTimes[$x];
-                $data[] = array($scrappedTimes[$x], $rankingArray[$top1][$x][$currentTime], $rankingArray[$top2][$x][$currentTime], $rankingArray[$top3][$x][$currentTime]);
-            }
-           
-           $encoders = array(new JsonEncoder());
-            $normalizers = array(new GetSetMethodNormalizer());
-
-            $serializer = new Serializer($normalizers, $encoders);
-            $data = $serializer->serialize($data, 'json');
-            $columns = array('Minuto', $top1, $top2, $top3);
-            return $app['twig']->render('projectresults.html.twig', array('data' => $data, 'columns'=>$columns, 'keyword'=>$keyword->getName()));
-       }
-
-    }
-
-    $encoders = array(new JsonEncoder());
-    $normalizers = array(new GetSetMethodNormalizer());
-
-    $serializer = new Serializer($normalizers, $encoders);
-    $data = $serializer->serialize($data, 'json');
-    $currentKeyword = $keyword->getName();
-
-
-
-    return $app['twig']->render('projectresults.html.twig', array('data' => $data));
 })->bind('projectResults');
 
 //CHEQUEAR SCRAPPEOS PENDIENTES
