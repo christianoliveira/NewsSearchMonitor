@@ -39,12 +39,12 @@ class Project
     private $language;
 
     /**
-     * @Column(name="start_date", type="date", nullable=true)
+     * @Column(name="start_date", type="datetime", nullable=true)
      */
     private $start_date;
 
     /**
-     * @Column(name="end_date", type="date", nullable=true)
+     * @Column(name="end_date", type="datetime", nullable=true)
      */
     private $end_date;
 

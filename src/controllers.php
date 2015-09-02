@@ -77,15 +77,109 @@ $app->match('/login', function (Request $request) use ($app) {
 
 //NUEVO PROYECTO
 $app->match('/newProject', function(Request $request) use ($app){
-    $em = $app['orm.em'];
-    $entity = new \Dev\Pub\Entity\Project();
+    /*$em = $app['orm.em'];
+    $entity = new \Dev\Pub\Entity\Project();    
 
     $form = $app['form.factory']->create(new \Dev\Pub\Project\ProjectType(), $entity); 
     $form->handleRequest($request);
     if ($form->isValid()) {
         $em->persist($entity);
         $em->flush();
-    } 
+    } */
+    $em = $app['orm.em'];
+    $builder = $app['form.factory']->createBuilder('form');
+
+    $form = $builder
+        ->add('name', 'text', array('label' => 'Nombre del proyecto', 'required'=>true, 'empty_data'  => null))
+        ->add('startDate', 'text', array('label' => 'Fecha y hora de inicio', 'required'=>true, 'empty_data'  => null))
+        ->add('duration', 'number', array('label' => 'Duración (horas)', 'required'=>true, 'empty_data'  => null))
+        ->add(
+            $builder->create('Keywords', 'form')
+                ->add('keyword1', 'text', array('label' => 'Keyword 1', 'required'=>true, 'empty_data'  => null))
+                ->add('keyword2', 'text', array('label' => 'Keyword 2', 'required'=>false, 'empty_data'  => null))
+                ->add('keyword3', 'text', array('label' => 'Keyword 3', 'required'=>false, 'empty_data'  => null))
+                ->add('keyword4', 'text', array('label' => 'Keyword 4', 'required'=>false, 'empty_data'  => null))
+        )
+        ->add('create', 'submit', array('label' => 'Crear Proyecto'))
+        ->getForm();
+
+    $form->handleRequest($request);
+    
+    if($form->isSubmitted()){
+        if($form->isValid()){
+            $data = $form->getData();
+            if($data['name'] != NULL && $data['startDate'] != NULL && $data['duration']!=NULL && $data['Keywords']['keyword1']!=NULL){
+                $project = new \Dev\Pub\Entity\Project();
+                $project->setName($data['name']);
+                $startDate = $data['startDate'];
+                $startDateTime = strtotime($startDate);
+                $startDate = new \DateTime($startDate);
+                $project->setStartDate($startDate);
+                $endDateTime = strtotime(date('Y-m-d H:i:s', strtotime("+{$data['duration']}  hours", $startDateTime)));
+                $endDate = date('Y-m-d H:i:s', $endDateTime);
+                $endDate = new \DateTime($endDate);
+                $project->setEndDate($endDate);
+                /*$keywordsRepository = $em->getRepository('\Dev\Pub\Entity\Keyword');
+                foreach ($data['Keywords'] as $keyword => $value) {
+                    if($value != NULL){
+                        $tempKeyword = $keywordsRepository->findOneBy(array('name'=>$value));
+                        if($tempKeyword==NULL){
+                            $tempKeyword = new \Dev\Pub\Entity\keyword();
+                            $tempKeyword->setName($value);
+                        }
+                        $project->addKeyword($tempKeyword);
+                        
+                    }
+                }*/
+
+                $keywordsRepository = $em->getRepository('\Dev\Pub\Entity\Keyword');
+                foreach ($data['Keywords'] as $keyword => $value) {
+                    if($value != NULL){
+                        $tempKeyword = new \Dev\Pub\Entity\keyword();
+                        $tempKeyword->setName($value);
+                        $project->addKeyword($tempKeyword);
+                    }
+                }
+
+                $em->persist($project);
+                $em->flush();
+                $url = $app['url_generator']->generate('projectResults', array('id' => $project->getId()));
+                return $app->redirect($url);
+            }else{
+                //do something...
+            }
+        }
+    }
+    
+
+    /*$form = $app['form.factory']->createBuilder('form', $data)
+            ->add('keyword1', 'text')
+            ->add('keyword2', 'text', array('required'=>false, 'empty_data'  => null))
+            ->add('keyword3', 'text', array('required'=>false, 'empty_data'  => null))
+            ->add('keyword4', 'text', array('required'=>false, 'empty_data'  => null))
+            ->getForm();
+    $form->handleRequest($request);
+    if ($form->isValid()) {
+        $data = $form->getData();
+        foreach ($data as $keyword) {
+            if($keyword != NULL){
+                $newKeyword = new \Dev\Pub\Entity\Keyword();
+                $newKeyword->setName($keyword);
+                $newKeyword->addProject($project);
+                $project->addKeyword($newKeyword);
+                $em->persist($newKeyword);
+                $em->persist($project);
+            }
+        }
+        $em->flush();
+        return $app->redirect($request->getRequestUri());
+    } */
+
+
+
+
+
+
     return $app['twig']->render('newproject.html.twig', array('form' => $form->createView()));
 })->bind('newProject');
 
@@ -403,34 +497,10 @@ $app->match('/projectResults/{projectId}/{keywordId}', function(Request $request
     }
     
 
-    if($top1 != ""){
-        $currentIndex = 0;
-        $dataTemp = array(); 
-
-        for($x=0;$x<sizeof($rankingArray[$top1]);$x++){
-            $currentTime = $scrappedTimes[$x];
-            $dataTemp[] = array($scrappedTimes[$x]);
-            foreach ($rankingArray as $site => $rank) {
-                array_push($dataTemp[$currentIndex], $rank[$x][$currentTime]);
-            }
-            $currentIndex++;
-        }
-
-        $encoders = array(new JsonEncoder());
-        $normalizers = array(new GetSetMethodNormalizer());
-
-        $serializer = new Serializer($normalizers, $encoders);
-        $dataTemp = $serializer->serialize($dataTemp, 'json');
-        $columns = array('Minuto');
-        foreach ($rankingArray as $site => $rankings) {
-            $columns[] = $site;
-        }
-
-        return $app['twig']->render('projectresults.html.twig', array('data' => $dataTemp, 'columns'=>$columns, 'keyword'=>$keyword->getName(), 'otherKeywords' => $otherKeywords));
-    }
+    
     $data = array();
 
-    return $app['twig']->render('projectresults.html.twig', array('data' => $data, 'keyword'=>$keyword->getName(),'otherKeywords' => $otherKeywords));
+    return $app['twig']->render('projectresults.html.twig', array('dataRanking' => $data, 'dataVisibility'=> $data, 'keyword'=>$keyword->getName(),'otherKeywords' => $otherKeywords));
 })->bind('projectResultsKeyword');
 
 //VER RESULTADOS PROYECTO
@@ -471,7 +541,7 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                 $url = "http://www.google.es/search?q=".$currentKeyword."&hl=".$currentProjects[$i]->getLanguage()."&gl=".$currentProjects[$i]->getCountry()."&pws=0";
                 //$tempHtml = new DOMDocument;
                 //@$tempHtml->loadHtmlFile($url);
-                $proxies = array();
+                //$proxies = array();
                 //Aquí añadiríamos al array de proxies los proxies que tengamos para poder evitar ser baneados por Google
 
 
@@ -485,22 +555,31 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                     curl_setopt($ch, CURLOPT_PROXY, $proxy);
                 }
                 $returnHtml = curl_exec($ch);
+                $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 curl_close ($ch);
                 $tempHtml = new DOMDocument;
                 @$tempHtml->loadHtml($returnHtml);
-                if($tempHtml == FALSE){
-                    echo "<br>ERROR<br>";
+                if($httpcode != 200){
+                    return "Google no ha devuelto un 200, probablemente nos haya baneado";
+                }else if($tempHtml == FALSE){
+                    return "Ha habido algún error al intentar scrappear a Google";
                 }
 
                 $serp = new \Dev\Pub\Entity\SERP();
                 $serp->setKeyword($keywords[$j]);
                 
-                //$date = new DateTime();
-                //$timestamp = $date->getTimestamp();
                 $serp->setTimestamp(new \DateTime());
-                $serp->setHtml($tempHtml->saveXML());
+                $saveHtmlPath = "../htmlScrapped/".$currentProjects[$i]->getId()."/".$keywords[$j]->getId();
+                $filename = $serp->getTimeStamp()->getTimestamp().".html";
+                $pathAndFilename = $saveHtmlPath."/".$filename;
+                if(!is_dir($saveHtmlPath)){
+                    if(!mkdir($saveHtmlPath, 0777, true)){
+                        die("Fallo al crear las carpetas");
+                    }
+                }
+                $tempHtml->saveHTMLFile($pathAndFilename);
+                $serp->setHtml($pathAndFilename);
 
-                //$xpath = new DOMXPath($serp->getHtml());
                 $xpath = new DOMXPath($tempHtml);
 
                 //esto parte el html en los serpresult unicamente, con lo cual podemos ir uno por uno comprobando el tipo 
