@@ -24,6 +24,11 @@ class Serp
     private $html;
 
     /**
+     * @Column(type="text", nullable=true)
+     */
+    private $newsHtml;
+
+    /**
      * @OneToMany(targetEntity="Dev\Pub\Entity\SerpResult", mappedBy="serp", cascade={"persist", "remove"},  fetch="EAGER")
      */
     private $serpResults;
@@ -155,5 +160,29 @@ class Serp
     public function getSerpResults()
     {
         return $this->serpResults;
+    }
+
+    /**
+     * Set newsHtml
+     *
+     * @param string $newsHtml
+     *
+     * @return Serp
+     */
+    public function setNewsHtml($newsHtml)
+    {
+        $this->newsHtml = $newsHtml;
+
+        return $this;
+    }
+
+    /**
+     * Get newsHtml
+     *
+     * @return string
+     */
+    public function getNewsHtml()
+    {
+        return $this->newsHtml;
     }
 }

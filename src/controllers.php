@@ -15,6 +15,7 @@ use Symfony\Component\Serializer\Serializer;
 //HOMEPAGE
 $app->match('/', function () use ($app) {
     $em = $app['orm.em'];
+    
     $q = $em->createQuery("select p from \Dev\Pub\Entity\Project p where p.start_date < CURRENT_TIMESTAMP() and p.end_date > CURRENT_TIMESTAMP()");
     $currentProjects = $q->getResult();
 
@@ -192,6 +193,12 @@ $app->match('/addKeywords/{projectId}', function(Request $request, $projectId) u
     $project = $projectsRepository->findOneBy(array('id' => $projectId));
 
     //solo se pueden añadir keywords en proyectos en ejecución o futuros, por lo lo que comprobamos si este proyecto es elegible
+    $homeData = array('name'=>"Home", 'url'=> $app['url_generator']->generate('homepage'));
+    $projectData = array(
+        'name'=>$project->getName(), 
+        'url'=> $app['url_generator']->generate('projectResults', array('id' => $project->getId()))
+    );
+
     $now = new \DateTime();
     if($project->getEndDate() > $now){
         $keywords = $project->getKeywords();
@@ -222,10 +229,19 @@ $app->match('/addKeywords/{projectId}', function(Request $request, $projectId) u
             $em->flush();
             return $app->redirect($request->getRequestUri());
         } 
-        return $app['twig']->render('addkeywords.html.twig', array('currentKeywords'=>$currentKeywords, 'form' => $form->createView()));
+        return $app['twig']->render('addkeywords.html.twig', array(
+            'currentKeywords'=>$currentKeywords, 
+            'form' => $form->createView(),
+            'home' => $homeData,
+            'project' => $projectData,
+        ));
     }
 
-    return $app['twig']->render('addkeywords.html.twig', array('form' => "El proyecto ya ha finalizado."));
+    return $app['twig']->render('addkeywords.html.twig', array(
+        'form' => "El proyecto ya ha finalizado.",
+        'home' => $homeData,
+        'project' => $projectData,
+    ));
 })->bind('addKeywords');
 
 //VER RESULTADOS PROYECTO+KEYWORD+SITE
@@ -239,6 +255,7 @@ $app->match('/projectResults/{projectId}/{keywordId}/{siteName}', function(Reque
     $serpCount = 0;
     $actualCount = 0;
 
+
     foreach ($serps as $serp) {
         $serpResults = $serp->getSerpResults();
         $serpCount++;
@@ -247,85 +264,206 @@ $app->match('/projectResults/{projectId}/{keywordId}/{siteName}', function(Reque
             $type = $serpResult->getType();
             $date = $serp->getTimestamp();
             $printDate = date_format($date, 'H:i:s');
+
             if($type == "news" && $site == $siteName){
                 $actualCount++;
-                
-                $headLineReportRows[] = array(
-                    $printDate,
-                    $serpResult->getUrl(),
-                    $serpResult->getTitle(),
-                    $serpResult->getURLTitle(), 
-                    $serpResult->getUrlH1(), 
-                    $serpResult->getSubrank()
-                );
 
-                $updatedTimeReportRows[] = array(
-                    $printDate,
-                    $serpResult->getUrl(),
-                    $serpResult->getTitle(),
-                    $serpResult->getSubrank(),
-                    $serpResult->getURLDate(),
-                    $serpResult->getURLDateIssued(),
-                    $serpResult->getURLTextDate(),
-                );
+                //si no es el primer elemento del array, comparamos con el anterior
+                if($headLineReportRows != 0){
+                    //si el elemento anterior no es vacío (...), pasamos a comprarar cada elemento
+                    $headLineReportRows[] = array(
+                        'date' => array($printDate, true),
+                        'url' => array($serpResult->getUrl(), false),
+                        'ranking' => array($serpResult->getSubrank(),false),
+                        'newstitle' => array($serpResult->getTitle(),false),
+                        'urltitle' => array($serpResult->getURLTitle(), false),
+                        'urlh1' => array($serpResult->getUrlH1(), false),
+                    );
 
-                $socialReportRows[] = array(
-                    $printDate,
-                    $serpResult->getUrl(),
-                    $serpResult->getUrlTweetCount(),
-                    $serpResult->getUrlFbLikeCount(),
-                    $serpResult->getUrlFbShareCount(),
-                    $serpResult->getUrlFbTotalCount(),
-                    $serpResult->getUrlPlusOneCount(),
-                );
+                    if(sizeof($headLineReportRows)>1){
+                        //Tenemos mínimo 2 elementos
+
+                        $i=sizeof($headLineReportRows)-2;
+                        //comprobamos si elemento anterior es vacío
+                        if($headLineReportRows[$i]['ranking'][0]=="..."){
+                            //si es así, vamos hacia atrás hasta encontrar un elemento con contenido.
+                            $i--;
+                            while($i >= 0 && $headLineReportRows[$i]['ranking'][0] =="..."){
+                                $i--;
+                            }
+                            //Aquí, o tenemos el índice del elemento con contenido, o tenemos -1d
+                        }
+                        if($i != -1) {
+                            //Si no es -1, quiere decir que encontramos algo con lo que comparar, ya sea el elemento anterior o uno más atrás
+                            foreach ($headLineReportRows[$i] as $elementIndex => $elementValue) {
+                                if($elementValue[0] != $headLineReportRows[sizeof($headLineReportRows)-1][$elementIndex][0]){
+                                    $headLineReportRows[sizeof($headLineReportRows)-1][$elementIndex][1] = true;
+                                }
+                            }
+                        }
+                    }
+
+                    $updatedTimeReportRows[] = array(
+                        'date' => array($printDate,true),
+                        'url' => array($serpResult->getUrl(),false),
+                        'ranking' => array($serpResult->getSubrank(),false),
+                        'title' => array($serpResult->getTitle(),false),
+                        'urldate' => array($serpResult->getURLDate(),false),
+                        'urldateissued' => array($serpResult->getURLDateIssued(),false),
+                        'urltextdate' => array($serpResult->getURLTextDate(),false),
+                    );
+
+                    if(sizeof($updatedTimeReportRows)>1){
+                        //Tenemos mínimo 2 elementos
+
+                        $i=sizeof($updatedTimeReportRows)-2;
+                        //comprobamos si elemento anterior es vacío
+                        if($updatedTimeReportRows[$i]['ranking'][0]=="..."){
+                            //si es así, vamos hacia atrás hasta encontrar un elemento con contenido.
+                            $i--;
+                            while($i >= 0 && $updatedTimeReportRows[$i]['ranking'][0] =="..."){
+                                $i--;
+                            }
+                            //Aquí, o tenemos el índice del elemento con contenido, o tenemos -1d
+                        }
+                        if($i != -1) {
+                            //Si no es -1, quiere decir que encontramos algo con lo que comparar, ya sea el elemento anterior o uno más atrás
+                            foreach ($updatedTimeReportRows[$i] as $elementIndex => $elementValue) {
+                                if($elementValue[0] != $updatedTimeReportRows[sizeof($updatedTimeReportRows)-1][$elementIndex][0]){
+                                    $updatedTimeReportRows[sizeof($updatedTimeReportRows)-1][$elementIndex][1] = true;
+                                }
+                            }
+                        }
+                    }
+
+
+                    $socialReportRows[] = array(
+                        'date' => array($printDate,true),
+                        'url' => array($serpResult->getUrl(),false),
+                        'ranking' => array($serpResult->getSubrank(),false),
+                        'tweets' => array($serpResult->getUrlTweetCount(),false),
+                        'fblikes' => array($serpResult->getUrlFbLikeCount(),false),
+                        'fbshares' => array($serpResult->getUrlFbShareCount(),false),
+                        'fbtotal' => array($serpResult->getUrlFbTotalCount(),false),
+                        'plusone' => array($serpResult->getUrlPlusOneCount(),false),
+                    );
+
+                    if(sizeof($socialReportRows)>1){
+                        //Tenemos mínimo 2 elementos
+
+                        $i=sizeof($socialReportRows)-2;
+                        //comprobamos si elemento anterior es vacío
+                        if($socialReportRows[$i]['ranking'][0]=="..."){
+                            //si es así, vamos hacia atrás hasta encontrar un elemento con contenido.
+                            $i--;
+                            while($i >= 0 && $socialReportRows[$i]['ranking'][0] =="..."){
+                                $i--;
+                            }
+                            //Aquí, o tenemos el índice del elemento con contenido, o tenemos -1d
+                        }
+                        if($i != -1) {
+                            //Si no es -1, quiere decir que encontramos algo con lo que comparar, ya sea el elemento anterior o uno más atrás
+                            foreach ($socialReportRows[$i] as $elementIndex => $elementValue) {
+                                if($elementValue[0] != $socialReportRows[sizeof($socialReportRows)-1][$elementIndex][0]){
+                                    $socialReportRows[sizeof($socialReportRows)-1][$elementIndex][1] = true;
+                                }
+                            }
+                        }
+                    }
+                }
             }else if($serpCount > $actualCount){
                 $headLineReportRows[] = array(
-                    $printDate,
-                    "-",
-                    "-",
-                    "-", 
-                    "-", 
-                    "-"
+                    'date' => array("...", true),
+                    'url' => array("...", false),
+                    'ranking' => array("...",false),
+                    'newstitle' => array("...",false),
+                    'urltitle' => array("...", false),
+                    'urlh1' => array("...", false)
                 );
 
                 $updatedTimeReportRows[] = array(
-                    $printDate,
-                    "-",
-                    "-",
-                    "-", 
-                    "-", 
-                    "-",
-                    "-"
+                    'date' => array("...",false),
+                    'url' => array("...",false),
+                    'ranking' => array("...",false),
+                    'title' => array("...",false),
+                    'urldate' => array("...",false),
+                    'urldateissued' => array("...",false),
+                    'urltextdate' => array("...",false),
                 );
 
                 $socialReportRows[] = array(
-                    $printDate,
-                    $serpResult->getUrl(),
-                    "-",
-                    "-",
-                    "-", 
-                    "-", 
-                    "-"
+                    'date' => array("...",true),
+                    'url' => array("...",false),
+                    'ranking' => array("...",false),
+                    'tweets' => array("...",false),
+                    'fblikes' => array("...",false),
+                    'fbshares' => array("...",false),
+                    'fbtotal' => array("...",false),
+                    'plusone' => array("...",false),
                 );
-                $actualCount++;
+                $actualCount=$serpCount;
             }
         }
     }
 
-    $headLineReportColumns = array("hora", "url", "title en news", "title noticia", "h1 noticia", "ranking");
-    $updatedTimeReportColumns = array("hora", "url", "title en news", "ranking", "etiqueta Date", "etiqueta Date.issued", "hora en texto");
-    $socialReportColumns = array("hora", "url", "tweets", "FB Likes", "FB Shares", "FB Total", "+1s");
+    $headLineReportColumns = array(
+        'date' => "hora",
+        'url' => "url",
+        'ranking' => "ranking",
+        'newstitle' => "title news",
+        'urltitle' => "title noticia",
+        'urlh1' => "h1 noticia",
+    );
+    $updatedTimeReportColumns = array(
+        'date' => "hora",
+        'url' => "url",
+        'ranking' => "ranking",
+        'title' => "title news",
+        'urldate' => "etiqueta Date",
+        'urldateissued' => "etiqueta Date.issued",
+        'urltextdate' => "date en texto",
+    );
+    $socialReportColumns = array(
+        'date' => "hora",
+        'url' => "url",
+        'ranking' => "ranking",
+        'tweets' => "tweets",
+        'fblikes' => "Likes Fb",
+        'fbshares' => "Shares FB",
+        'fbtotal' => "Total FB",
+        'plusone' => "+1s",
+    );
+
+    $homeData = array('name'=>"Home", 'url'=> $app['url_generator']->generate('homepage'));
+    $projectsRepository = $em->getRepository('\Dev\Pub\Entity\Project');
+    $project = $projectsRepository->findOneBy(array('id'=>$projectId));
+    $projectData = array(
+        'name'=>$project->getName(), 
+        'url'=> $app['url_generator']->generate('projectResults', array('id' => $project->getId()))
+    );
+    $keywordData = array(
+        'name'=>$keyword->getName(), 
+        'url'=> $app['url_generator']->generate('projectResultsKeyword', array(
+            'projectId' => $project->getId(), 
+            'keywordId'=>$keyword->getId()))
+    );
+    $siteData = array('name' => $siteName);
+
     return $app['twig']
         ->render('projectKeywordSiteResults.html.twig', 
         array(
-            'site'=>$siteName, 
             'headLineReportColumns'=>$headLineReportColumns, 
             'headLineReportRows'=>$headLineReportRows,
             'updatedTimeReportRows'=>$updatedTimeReportRows,
             'updatedTimeReportColumns'=>$updatedTimeReportColumns,
             'socialReportRows'=>$socialReportRows,
             'socialReportColumns'=>$socialReportColumns,
-            'keyword'=>$keyword->getName()));
+            'home' => $homeData,
+            'project' => $projectData,
+            'keyword' =>$keywordData,
+            'site' => $siteData
+        )
+    );
 })->bind('projectResultsKeywordSite');
 
 //VER RESULTADOS PROYECTO+KEYWORD
@@ -344,19 +482,35 @@ $app->match('/projectResults/{projectId}/{keywordId}', function(Request $request
     $keywordsRepository = $em->getRepository('\Dev\Pub\Entity\Keyword');
     $keyword = $keywordsRepository->findOneBy(array('id' => $keywordId));
 
+    $homeData = array('name'=>"Home", 'url'=> $app['url_generator']->generate('homepage'));
+    $projectData = array(
+        'name'=>$project->getName(), 
+        'url'=> $app['url_generator']->generate('projectResults', array('id' => $project->getId()))
+    );
+    $keywordData = array(
+        'name'=>$keyword->getName(), 
+        'url'=> $app['url_generator']->generate('projectResultsKeyword', array(
+            'projectId' => $project->getId(), 
+            'keywordId'=>$keyword->getId()))
+    );
+
     $serps = $keyword->getSerps();
     $i=0;
     $serpNumber=0;
 
 
+
     $visibilityArray = array();
     $rankingArray = array();
     $scrappedTimes = array();
+    $htmlSerps = array();
     
     foreach ($serps as $serp) { 
         //recorremos serps               
         $serpresults = $serp->getSerpResults();
-        $scrappedTimes[] = date_format($serp->getTimestamp(), 'Y-m-d H:i:s');
+        $scrappedTime = date_format($serp->getTimestamp(), 'Y-m-d H:i:s');
+        $scrappedTimes[] = $scrappedTime;
+        $htmlSerps[] = array($scrappedTime => unserialize($serp->getNewsHtml()));
         foreach ($serpresults as $serpresult) {
             //recorremos cada resultado
             if($serpresult->getType()=="news"){
@@ -474,6 +628,7 @@ $app->match('/projectResults/{projectId}/{keywordId}', function(Request $request
         for($x=0;$x<sizeof($rankingArray[$key]);$x++){
             $currentTime = $scrappedTimes[$x];
             $dataRankingTemp[] = array($scrappedTimes[$x]);
+            array_push($dataRankingTemp[$currentIndex], $htmlSerps[$x][$currentTime]);
             $dataVisibilityTemp[] = array($scrappedTimes[$x]);
             foreach ($rankingArray as $site => $rank) {
                 array_push($dataRankingTemp[$currentIndex], $rank[$x][$currentTime]);
@@ -492,15 +647,44 @@ $app->match('/projectResults/{projectId}/{keywordId}', function(Request $request
         foreach ($rankingArray as $site => $rankings) {
             $columns[] = $site;
         }
+        $columns = $serializer->serialize($columns, 'json');
+        $sites = array();
+        foreach ($rankingArray as $site => $rank){
+            $url = $app['url_generator']->generate('projectResultsKeywordSite', array(
+                'projectId' => $project->getId(),
+                'keywordId' => $keyword->getId(),
+                'siteName' => $site
+            ));
+            $sites[] = array(
+                'name' => $site,
+                'url' => $url
+            );
+        }
 
-        return $app['twig']->render('projectresults.html.twig', array('dataRanking' => $dataRankingTemp, 'dataVisibility' => $dataVisibilityTemp, 'columns'=>$columns, 'keyword'=>$keyword->getName(), 'otherKeywords' => $otherKeywords));
+        return $app['twig']->render('projectresults.html.twig', array(
+            'dataRanking' => $dataRankingTemp, 
+            'dataVisibility' => $dataVisibilityTemp, 
+            'columns'=>$columns,
+            'keyword'=>$keywordData,
+            'project' => $projectData,
+            'home' => $homeData,
+            'otherKeywords' => $otherKeywords,
+            'sites' => $sites,
+        ));
     }
     
 
     
     $data = array();
 
-    return $app['twig']->render('projectresults.html.twig', array('dataRanking' => $data, 'dataVisibility'=> $data, 'keyword'=>$keyword->getName(),'otherKeywords' => $otherKeywords));
+    return $app['twig']->render('projectresults.html.twig', array(
+        'dataRanking' => $data, 
+        'dataVisibility'=> $data, 
+        'keyword'=>$keywordData,
+        'project' => $projectData,
+        'home' => $homeData,
+        'sites' => null,
+        'otherKeywords' => $otherKeywords));
 })->bind('projectResultsKeyword');
 
 //VER RESULTADOS PROYECTO
@@ -545,7 +729,7 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                 //Aquí añadiríamos al array de proxies los proxies que tengamos para poder evitar ser baneados por Google
 
 
-                $ch = curl_init();
+                /*$ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL,$url);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
 
@@ -556,7 +740,39 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                 }
                 $returnHtml = curl_exec($ch);
                 $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close ($ch);*/
+
+                $tries = 5;
+
+                $ch = curl_init();
+
+                curl_setopt($ch, CURLOPT_URL,$url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT ,10); 
+                curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+                $proxies = array('108.186.244.74:80', '108.186.244.222:80', '108.186.244.73:80', '192.126.190.49:80', '192.126.190.96:80');
+                if(isset($proxies)){
+                    $proxy = $proxies[array_rand($proxies)];
+                    curl_setopt($ch, CURLOPT_PROXY, $proxy);
+                }
+                $returnHtml = curl_exec($ch);
+
+                while($returnHtml != TRUE && $tries != 0){
+                    if(isset($proxies)){
+                        $proxy = $proxies[array_rand($proxies)];
+                        curl_setopt($ch, CURLOPT_PROXY, $proxy);
+                        $returnHtml = curl_exec($ch);
+                        $tries--;
+                    }
+                    else{
+                        echo "no hay proxies, no se puede scrappear";
+                        $tries = 0;
+                    }
+                }
+                $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 curl_close ($ch);
+
+
                 $tempHtml = new DOMDocument;
                 @$tempHtml->loadHtml($returnHtml);
                 if($httpcode != 200){
@@ -609,6 +825,19 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                             //es news, un link
                             $tempSERPresult = new \Dev\Pub\Entity\SERPResult();
                             $tempSERPresult->setType("news");
+                            var_dump($serpnode);
+                            $children = $serpnode->childNodes; 
+                            $htmlNews ="";
+                            foreach ($children as $child) { 
+                                $tmp_doc = new DOMDocument(); 
+                                $tmp_doc->appendChild($tmp_doc->importNode($child,true));        
+                                $htmlNews .= $tmp_doc->saveHTML(); 
+                            } 
+                            $htmlNews = str_replace("\n", '', $htmlNews); // remove new lines
+                            $htmlNews = str_replace("\r", '', $htmlNews); // remove carriage returns
+                            if($serp->getNewsHtml() == ""){
+                                $serp->setNewsHtml(serialize($htmlNews));
+                            }
 
                             
                             //pedimos el title
@@ -799,7 +1028,6 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
     }
 
 })->bind('checkPendingWork');
-
 //LOGOUT
 $app->match('/logout', function () use ($app) {
     $app['session']->clear();

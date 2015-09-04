@@ -5196,3 +5196,7 @@ a.badge:focus {
 body {
   padding-top: 60px;
 }
+
+td.changed{
+  background-color:#dff0d8!important;
+}

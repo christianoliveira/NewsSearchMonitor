@@ -1,0 +1,4 @@
+consultas:
+
+select SerpResult.`subrank`, SerpResult.`serp_id`, SerpResult.`type`, SerpResult.`site`, Serp.`id`, Serp.`keyword_id`, Keyword.`id`, Keyword.`name`, Serp.`timestamp` from SerpResult, Serp, Keyword where Keyword.`name`="morate" and Serp.`keyword_id` = Keyword.`id` and SerpResult.`serp_id`=Serp.`id` and SerpResult.`type`="news" and SerpResult.`site`="El Mundo";
+

@@ -1,7 +1,13 @@
 {% extends 'layout.html.twig' %}
 
 {% block content %}
+    <ol class="breadcrumb">
+      <li><a href="{{ home.url }}">Home</a> ></li>
+      <li><a href="{{ project.url }}">{{ project.name }}</a> ></li>
+      <li class="active">{{ keyword.name }}</li>
+    </ol>
     <script type="text/javascript">
+
 
       // Load the Visualization API and the piechart package.
       google.load('visualization', '1.0', {'packages':['corechart']});
@@ -18,33 +24,45 @@
 
         var dataRank = new google.visualization.DataTable();
         var dataVisib = new google.visualization.DataTable();
+        var donutVisib = new google.visualization.DataTable();
+        donutVisib.addColumn('string','Site');
+        donutVisib.addColumn('number', 'Visibilidad');
 
-        var j=0;
+        
 
         {% if dataRanking is defined and columns is defined %}
-
-          {% for item in columns %}
-            if(j==0){
-              dataRank.addColumn('datetime', 'minute');
-              dataVisib.addColumn('datetime', 'minute');
-              j++;
-            }else{
-              dataRank.addColumn('number', '{{item}}');
-              dataVisib.addColumn('number', '{{item}}');
-            }
-          {% endfor %}
-
           var dataArrayRanking = {{ dataRanking|raw }};
           var dataArrayVisibility = {{ dataVisibility|raw}}
+          var dataColumns = {{ columns|raw }}
+
+
+          dataRank.addColumn('datetime', 'minute');
+          dataVisib.addColumn('datetime', 'minute');
+          dataRank.addColumn({'type': 'string', 'role': 'tooltip', 'p': {'html': true}});
+
+
+          for(var i=1; i<dataColumns.length;i++){
+            dataRank.addColumn('number', dataColumns[i]);
+            dataVisib.addColumn('number', dataColumns[i]);
+          }
+
+          for(var z=1;z<dataColumns.length;z++){
+            donutVisib.addRow([dataColumns[z],dataArrayVisibility[dataArrayVisibility.length-1][z]]);
+          }
+          console.log(donutVisib );
 
           for(var i=0;i<dataArrayRanking.length;i++){
             var tempDate = new Date(dataArrayRanking[i][0]);
             var tempArray = [tempDate];
+            
             for(j=1;j<dataArrayRanking[i].length;j++){
               tempArray.push(dataArrayRanking[i][j]);
             }
+            
             dataRank.addRow(tempArray);
           }
+          
+
           for(var i=0;i<dataArrayVisibility.length;i++){
             var tempDate = new Date(dataArrayVisibility[i][0]);
             var tempArray = [tempDate];
@@ -53,7 +71,7 @@
             }
             dataVisib.addRow(tempArray);
           }
-          var keyword = "{{ keyword }}";
+          var keyword = "{{ keyword.name }}";
           var title = "Posicionamiento en News: "+keyword;
 
           // Set chart options
@@ -65,12 +83,16 @@
                          'pointSize': 8,
                          'lineWidth': 7,
                          'chartArea': { left: "0" },
-                         'explorer': { actions: ['dragToZoom', 'rightClickToReset'], axis: 'horizontal' }
+                         'explorer': { actions: ['dragToZoom', 'rightClickToReset'], axis: 'horizontal' },
+                          'tooltip': { isHtml: true }
+
                        };
 
           // Instantiate and draw our chart, passing in some options.
           var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
           var chart2 = new google.visualization.AreaChart(document.getElementById('vis_div'));
+          var chart3 = new google.visualization.PieChart(document.getElementById('donut_div'));
+          
           chart.draw(dataRank, options);
 
           var title = "Visibilidad de cada dominio para: "+keyword;
@@ -85,15 +107,35 @@
                          'explorer': { actions: ['dragToZoom', 'rightClickToReset'], axis: 'horizontal' }
                        };
           chart2.draw(dataVisib, options);
+          var options = {'title': title,
+                        'pieSliceText'  : 'label',
+
+                };
+          chart3.draw(donutVisib, options);
         {% endif %}
       }
+
+      $(document).ready(function(){
+        $("#showVisDiv").click(function(){
+            $("#vis_div").fadeIn();
+        });
+      
+    });
     </script>
-    <h1>Resultados de "{{ keyword }}"</h1>
+    <h1>Resultados de "{{ keyword.name }}"</h1>
     {% if dataRanking is empty %}
       <p>Los resultados comenzarán a aparecer aquí en un rato.</p>
     {% endif %}
-    <div id="chart_div"></div>
-    <div id="vis_div"></div>
+      <div id="chart_div"></div>
+      <p>Ver resultados detallados de:</p>
+      <ul>
+        {% for item in sites%}
+          <li><a href="{{item.url}}">{{item.name}}</a></li>
+        {% endfor %}
+      </ul>
+      <div id="donut_div" style="width: 900px; height: 500px;"></div>
+      <button type="button" id="showVisDiv" class="btn btn-primary btn-xs">Ver evolución de visibilidad</button>
+      <div id="vis_div" style="display:none"></div>
     <h4>Ver los resultados de otras keywords de este proyecto:</h4>
     <ul>
     {% for item in otherKeywords %}
