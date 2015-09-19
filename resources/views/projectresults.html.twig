@@ -54,7 +54,7 @@
           for(var i=0;i<dataArrayRanking.length;i++){
             var tempDate = new Date(dataArrayRanking[i][0]);
             var tempArray = [tempDate];
-            
+
             for(j=1;j<dataArrayRanking[i].length;j++){
               tempArray.push(dataArrayRanking[i][j]);
             }
@@ -127,7 +127,9 @@
       <p>Los resultados comenzarán a aparecer aquí en un rato.</p>
     {% endif %}
       <div id="chart_div"></div>
-      <p>Ver resultados detallados de:</p>
+      {% if not sites is defined %}
+        <p>Ver resultados detallados de:</p>
+      {% endif %}
       <ul>
         {% for item in sites%}
           <li><a href="{{item.url}}">{{item.name}}</a></li>

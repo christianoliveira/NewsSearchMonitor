@@ -19,7 +19,7 @@ class Project
     private $id;
 
     /**
-     * @Column(name="name", type="string", length=255, nullable=true)
+     * @Column(name="name", type="string", length=255)
      */
     private $name;
 
@@ -39,18 +39,17 @@ class Project
     private $language;
 
     /**
-     * @Column(name="start_date", type="datetime", nullable=true)
+     * @Column(name="start_date", type="datetime")
      */
     private $start_date;
 
     /**
-     * @Column(name="end_date", type="datetime", nullable=true)
+     * @Column(name="end_date", type="datetime")
      */
     private $end_date;
 
     /**
-     * @ManyToMany(targetEntity="Dev\Pub\Entity\Keyword", inversedBy="projects", cascade={"persist", "remove"})
-     * @JoinTable(name="Project_keyword")
+     * @OneToMany(targetEntity="Dev\Pub\Entity\Keyword", mappedBy="project", cascade={"persist", "remove"},  fetch="EAGER")
      * 
      */
     private $keywords;
@@ -226,9 +225,8 @@ class Project
      */
     public function addKeyword(\Dev\Pub\Entity\Keyword $keyword)
     {
-        $keyword->addProject($this);
+        $keyword->setProject($this);
         $this->keywords[] = $keyword;
-
         return $this;
     }
 

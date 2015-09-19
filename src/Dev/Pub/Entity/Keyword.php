@@ -15,7 +15,7 @@ class Keyword
     private $id;
 
     /**
-     * @Column(type="string", length=255, nullable=true)
+     * @Column(type="string", length=255)
      */
     private $name;
 
@@ -25,17 +25,16 @@ class Keyword
     private $serps;
 
     /**
-     * @ManyToMany(targetEntity="Dev\Pub\Entity\Project", mappedBy="keywords", cascade={"persist", "remove"})
+     * @ManyToOne(targetEntity="Dev\Pub\Entity\Project", inversedBy="keywords", fetch="EAGER")
      */
-    private $projects;
+    private $project;
     
     /**
      * Constructor
      */
     public function __construct()
     {
-        $this->serp = new \Doctrine\Common\Collections\ArrayCollection();
-        $this->projects = new \Doctrine\Common\Collections\ArrayCollection();
+        $this->serps = new \Doctrine\Common\Collections\ArrayCollection();
     }
 
     /**
@@ -73,50 +72,6 @@ class Keyword
     }
 
     /**
-     * Add project
-     *
-     * @param \Dev\Pub\Entity\Project $project
-     *
-     * @return Keyword
-     */
-    public function addProject(\Dev\Pub\Entity\Project $project)
-    {
-        $this->projects[] = $project;
-
-        return $this;
-    }
-
-    /**
-     * Remove project
-     *
-     * @param \Dev\Pub\Entity\Project $project
-     */
-    public function removeProject(\Dev\Pub\Entity\Project $project)
-    {
-        $this->projects->removeElement($project);
-    }
-
-    /**
-     * Get projects
-     *
-     * @return \Doctrine\Common\Collections\Collection
-     */
-    public function getProjects()
-    {
-        return $this->projects;
-    }
-
-    /**
-     * Get serps
-     *
-     * @return \Doctrine\Common\Collections\Collection
-     */
-    public function getSerps()
-    {
-        return $this->serps;
-    }
-
-    /**
      * Add serp
      *
      * @param \Dev\Pub\Entity\Serp $serp
@@ -125,7 +80,6 @@ class Keyword
      */
     public function addSerp(\Dev\Pub\Entity\Serp $serp)
     {
-        $serp->setKeyword($this);
         $this->serps[] = $serp;
 
         return $this;
@@ -139,5 +93,39 @@ class Keyword
     public function removeSerp(\Dev\Pub\Entity\Serp $serp)
     {
         $this->serps->removeElement($serp);
+    }
+
+    /**
+     * Get serps
+     *
+     * @return \Doctrine\Common\Collections\Collection
+     */
+    public function getSerps()
+    {
+        return $this->serps;
+    }
+
+    /**
+     * Set project
+     *
+     * @param \Dev\Pub\Entity\Project $project
+     *
+     * @return Keyword
+     */
+    public function setProject(\Dev\Pub\Entity\Project $project = null)
+    {
+        $this->project = $project;
+
+        return $this;
+    }
+
+    /**
+     * Get project
+     *
+     * @return \Dev\Pub\Entity\Project
+     */
+    public function getProject()
+    {
+        return $this->project;
     }
 }

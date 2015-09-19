@@ -30,8 +30,10 @@ $app->match('/', function () use ($app) {
         $currentProjectsArray[] = array($projectName, $url);
     }
 
-    $q = $em->createQuery("select p from \Dev\Pub\Entity\Project p where p.end_date < CURRENT_TIMESTAMP() ORDER BY p.end_date DESC")->setMaxResults(5);
+    $q = $em->createQuery("select p from \Dev\Pub\Entity\Project p where p.end_date < CURRENT_TIMESTAMP()")->setMaxResults(5);
+
     $pastProjects = $q->getResult();
+
 
     foreach ($pastProjects as $project) {
         $projectName = $project->getName();
@@ -39,7 +41,7 @@ $app->match('/', function () use ($app) {
         $url = $app['url_generator']->generate('projectResults', array('id' => $projectId));
         $pastProjectsArray[] = array($projectName, $url);
     }
-
+    
     $q = $em->createQuery("select p from \Dev\Pub\Entity\Project p where p.start_date > CURRENT_TIMESTAMP() ORDER BY p.start_date DESC")->setMaxResults(5);
     $futureProjects = $q->getResult();
 
@@ -51,6 +53,7 @@ $app->match('/', function () use ($app) {
         $futureProjectsArray[] = array($projectName, $url);
     }
     return $app['twig']->render('index.html.twig', array('currentProjects' => $currentProjectsArray, 'pastProjects'=>$pastProjectsArray, 'futureProjects'=>$futureProjectsArray));
+
 })->bind('homepage');
 
 
@@ -78,15 +81,6 @@ $app->match('/login', function (Request $request) use ($app) {
 
 //NUEVO PROYECTO
 $app->match('/newProject', function(Request $request) use ($app){
-    /*$em = $app['orm.em'];
-    $entity = new \Dev\Pub\Entity\Project();    
-
-    $form = $app['form.factory']->create(new \Dev\Pub\Project\ProjectType(), $entity); 
-    $form->handleRequest($request);
-    if ($form->isValid()) {
-        $em->persist($entity);
-        $em->flush();
-    } */
     $em = $app['orm.em'];
     $builder = $app['form.factory']->createBuilder('form');
 
@@ -120,18 +114,6 @@ $app->match('/newProject', function(Request $request) use ($app){
                 $endDate = date('Y-m-d H:i:s', $endDateTime);
                 $endDate = new \DateTime($endDate);
                 $project->setEndDate($endDate);
-                /*$keywordsRepository = $em->getRepository('\Dev\Pub\Entity\Keyword');
-                foreach ($data['Keywords'] as $keyword => $value) {
-                    if($value != NULL){
-                        $tempKeyword = $keywordsRepository->findOneBy(array('name'=>$value));
-                        if($tempKeyword==NULL){
-                            $tempKeyword = new \Dev\Pub\Entity\keyword();
-                            $tempKeyword->setName($value);
-                        }
-                        $project->addKeyword($tempKeyword);
-                        
-                    }
-                }*/
 
                 $keywordsRepository = $em->getRepository('\Dev\Pub\Entity\Keyword');
                 foreach ($data['Keywords'] as $keyword => $value) {
@@ -147,40 +129,10 @@ $app->match('/newProject', function(Request $request) use ($app){
                 $url = $app['url_generator']->generate('projectResults', array('id' => $project->getId()));
                 return $app->redirect($url);
             }else{
-                //do something...
+                //TODO do something...
             }
         }
     }
-    
-
-    /*$form = $app['form.factory']->createBuilder('form', $data)
-            ->add('keyword1', 'text')
-            ->add('keyword2', 'text', array('required'=>false, 'empty_data'  => null))
-            ->add('keyword3', 'text', array('required'=>false, 'empty_data'  => null))
-            ->add('keyword4', 'text', array('required'=>false, 'empty_data'  => null))
-            ->getForm();
-    $form->handleRequest($request);
-    if ($form->isValid()) {
-        $data = $form->getData();
-        foreach ($data as $keyword) {
-            if($keyword != NULL){
-                $newKeyword = new \Dev\Pub\Entity\Keyword();
-                $newKeyword->setName($keyword);
-                $newKeyword->addProject($project);
-                $project->addKeyword($newKeyword);
-                $em->persist($newKeyword);
-                $em->persist($project);
-            }
-        }
-        $em->flush();
-        return $app->redirect($request->getRequestUri());
-    } */
-
-
-
-
-
-
     return $app['twig']->render('newproject.html.twig', array('form' => $form->createView()));
 })->bind('newProject');
 
@@ -220,7 +172,7 @@ $app->match('/addKeywords/{projectId}', function(Request $request, $projectId) u
                 if($keyword != NULL){
                     $newKeyword = new \Dev\Pub\Entity\Keyword();
                     $newKeyword->setName($keyword);
-                    $newKeyword->addProject($project);
+                    $newKeyword->setProject($project);
                     $project->addKeyword($newKeyword);
                     $em->persist($newKeyword);
                     $em->persist($project);
@@ -291,7 +243,7 @@ $app->match('/projectResults/{projectId}/{keywordId}/{siteName}', function(Reque
                             while($i >= 0 && $headLineReportRows[$i]['ranking'][0] =="..."){
                                 $i--;
                             }
-                            //Aquí, o tenemos el índice del elemento con contenido, o tenemos -1d
+                            //Aquí, o tenemos el índice del elemento con contenido, o tenemos -1
                         }
                         if($i != -1) {
                             //Si no es -1, quiere decir que encontramos algo con lo que comparar, ya sea el elemento anterior o uno más atrás
@@ -717,30 +669,15 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
         for($i=0;$i<count($currentProjects);$i++)
         {
             $result = $result."<br>".$currentProjects[$i]->getName();
+            echo "<p>========>ACTUALIZAMOS EL PROYECTO: ".$currentProjects[$i]->getName()."</p>";
             $keywords = $currentProjects[$i]->getKeywords();
             for($j=0;$j<count($keywords);$j++){
                 $result = $result."<br>-keyword: ".$keywords[$j]->getName();
+                echo "<p>===>BUSCAMOS RESULTADOS PARA KEYWORD: ".$keywords[$j]->getName()."</p>";
                 $currentKeyword = str_replace(' ', '+', $keywords[$j]->getName());
                 //$url = "http://www.".$currentProjects[$i]->getSearchEngine()."/search?q=".$currentKeyword."&hl=".$currentProjects[$i]->getLanguage()."&gl=".$currentProjects[$i]->getCountry()."&pws=0";
-                $url = "http://www.google.es/search?q=".$currentKeyword."&hl=".$currentProjects[$i]->getLanguage()."&gl=".$currentProjects[$i]->getCountry()."&pws=0";
-                //$tempHtml = new DOMDocument;
-                //@$tempHtml->loadHtmlFile($url);
-                //$proxies = array();
-                //Aquí añadiríamos al array de proxies los proxies que tengamos para poder evitar ser baneados por Google
+                $url = "http://www.google.es/search?q=".$currentKeyword."&hl=es&gl=es&pws=0";
 
-
-                /*$ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL,$url);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
-
-                //y este código es el que se encarga de setear el proxy en caso de que haya
-                if(isset($proxies)){
-                    $proxy = $proxies[array_rand($proxies)];
-                    curl_setopt($ch, CURLOPT_PROXY, $proxy);
-                }
-                $returnHtml = curl_exec($ch);
-                $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close ($ch);*/
 
                 $tries = 5;
 
@@ -750,36 +687,68 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
                 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT ,10); 
                 curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-                $proxies = array('108.186.244.74:80', '108.186.244.222:80', '108.186.244.73:80', '192.126.190.49:80', '192.126.190.96:80');
-                if(isset($proxies)){
-                    $proxy = $proxies[array_rand($proxies)];
-                    curl_setopt($ch, CURLOPT_PROXY, $proxy);
-                }
-                $returnHtml = curl_exec($ch);
+                //$proxies = array('108.186.244.74:80', '108.186.244.222:80', '108.186.244.73:80', '192.126.190.49:80', '192.126.190.96:80');
+                $proxies = $app['proxies'];
 
-                while($returnHtml != TRUE && $tries != 0){
+
+                if(isset($proxies)){
+                    $tries = sizeof($proxies);
+                }else{
+                    $tries = 1;
+                }
+                
+
+                $sucess = FALSE;
+
+                while($tries > 0 && $sucess==FALSE){
+                    echo "<p>Quedan ".$tries." intentos</p>";
                     if(isset($proxies)){
                         $proxy = $proxies[array_rand($proxies)];
                         curl_setopt($ch, CURLOPT_PROXY, $proxy);
-                        $returnHtml = curl_exec($ch);
-                        $tries--;
+                        echo "<p>Usamos el proxy: ".$proxy."</p>";
                     }
-                    else{
-                        echo "no hay proxies, no se puede scrappear";
-                        $tries = 0;
+                    $returnHtml = curl_exec($ch);
+                    switch ($returnHtml) {
+                        case "FALSE":
+                            echo "<p>curl_exec ha devuelto: ".$returnHtml."</p>";
+                            echo "<p>No se ha podido completar la petición</p>";
+                            $tries--;
+                            break;
+                        
+                        default:
+                            $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                            if($httpcode == 302){
+                                //IP baneada, google nos lleva al captcha
+                                echo "<p>Google nos envía captcha, esta IP está baneada temporalmente</p>";
+                                echo "<p>Eliminamos el proxy ".$proxy." de la lista para esta iteración</p>";
+                                $proxies = array_diff($proxies, array($proxy));
+                                $tries--;
+                            }
+                            else if($httpcode == 200){
+                                //Hemos podido obtener el html!
+                                echo "<p>HTML obtenido con éxito!</p>";
+                                $sucess = TRUE;
+                            }else{
+                                echo "<p>La petición se ha realizado correctamente pero se nos ha devuelvo un ".$httpcode."</p>";
+
+                            }
+                            break;
                     }
+
                 }
-                $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close ($ch);
+
+                if($sucess==FALSE){
+                    return "No se ha podido scrappear la URL";
+                }
 
 
                 $tempHtml = new DOMDocument;
                 @$tempHtml->loadHtml($returnHtml);
-                if($httpcode != 200){
+                /*if($httpcode != 200){
                     return "Google no ha devuelto un 200, probablemente nos haya baneado";
                 }else if($tempHtml == FALSE){
                     return "Ha habido algún error al intentar scrappear a Google";
-                }
+                }*/
 
                 $serp = new \Dev\Pub\Entity\SERP();
                 $serp->setKeyword($keywords[$j]);
@@ -825,7 +794,6 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                             //es news, un link
                             $tempSERPresult = new \Dev\Pub\Entity\SERPResult();
                             $tempSERPresult->setType("news");
-                            var_dump($serpnode);
                             $children = $serpnode->childNodes; 
                             $htmlNews ="";
                             foreach ($children as $child) { 
@@ -1022,7 +990,7 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
             }
         }
         $em->flush();
-        return $result;
+        return TRUE;
     }else{
         return "No hay proyectos en marcha";
     }

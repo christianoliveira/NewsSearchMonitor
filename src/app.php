@@ -119,7 +119,10 @@ if (isset($app['assetic.enabled']) && $app['assetic.enabled']) {
 $app->register(new Silex\Provider\DoctrineServiceProvider());
 $app->register(new Dflydev\Silex\Provider\DoctrineOrm\DoctrineOrmServiceProvider());
 
-$app['visibilityFirst'] = 70;
-$app['visibilitySecond'] = 20;
-$app['visibilityThird'] = 10;
+$app['visibilityFirst'] = 50;
+$app['visibilitySecond'] = 30;
+$app['visibilityThird'] = 20;
+
+$app['proxies'] = array('166.88.107.201:80', '166.88.125.51:80', '166.88.107.72:80', '89.32.71.219:80', '89.32.66.248:80');
+
 return $app;
