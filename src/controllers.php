@@ -807,7 +807,6 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                                 $serp->setNewsHtml(serialize($htmlNews));
                             }
 
-                            
                             //pedimos el title
                             $title = $xpath->query(".//a[contains(@href, 'QqQIw')]", $serpnode);
                             $tempSERPresult->setTitle($title->item($indexNews)->nodeValue);
