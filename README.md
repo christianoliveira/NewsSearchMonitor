@@ -12,4 +12,4 @@ Es un monitor de posiciones del módulo de Google news que Google saca en sus re
  * Genera gráficas de esa visibilidad y de la evolución de posiciones de cada site.
  * Genera informes de cambios por site
 
-Está todavía en desarrollo, usando Silex Kitchen Edition (http://lyrixx.github.io/Silex-Kitchen-Edition/) y Doctrine como ORM
+Utiliza Silex Kitchen Edition (http://lyrixx.github.io/Silex-Kitchen-Edition/) como base, Doctrine como ORM y Google Charts
