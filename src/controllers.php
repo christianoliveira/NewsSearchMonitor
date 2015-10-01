@@ -462,7 +462,11 @@ $app->match('/projectResults/{projectId}/{keywordId}', function(Request $request
         $serpresults = $serp->getSerpResults();
         $scrappedTime = date_format($serp->getTimestamp(), 'Y-m-d H:i:s');
         $scrappedTimes[] = $scrappedTime;
-        $htmlSerps[] = array($scrappedTime => unserialize($serp->getNewsHtml()));
+        $tempHtmlSerp = unserialize($serp->getNewsHtml());
+        if($tempHtmlSerp == false){
+            $tempHtmlSerp = "<p>No hemos podido recuperar el HTML de este SERP</p>";
+        }
+        $htmlSerps[] = array($scrappedTime => $tempHtmlSerp);
         foreach ($serpresults as $serpresult) {
             //recorremos cada resultado
             if($serpresult->getType()=="news"){
@@ -758,9 +762,14 @@ $app->match('/checkPendingWork', function(Request $request) use ($app){
                 $filename = $serp->getTimeStamp()->getTimestamp().".html";
                 $pathAndFilename = $saveHtmlPath."/".$filename;
                 if(!is_dir($saveHtmlPath)){
-                    if(!mkdir($saveHtmlPath, 0777, true)){
-                        die("Fallo al crear las carpetas");
+                    try{
+                        mkdir($saveHtmlPath, 0777, true);
+                    }catch(ErrorException $ex){
+                        echo "Error: ". $ex->getMessage();
                     }
+                    /*if(!mkdir($saveHtmlPath, 0777, true)){
+                        die("Fallo al crear las carpetas");
+                    }*/
                 }
                 $tempHtml->saveHTMLFile($pathAndFilename);
                 $serp->setHtml($pathAndFilename);
